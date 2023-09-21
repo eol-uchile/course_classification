@@ -38,3 +38,11 @@ def get_all_main_classifications():
     """
     orgs = [[x.id, x.name] for x in MainCourseClassification.objects.filter(is_active=True, visibility__in=[1,2]).order_by('sequence')]
     return orgs
+
+def get_courses_by_classification(org_id):
+    """
+        Return list of courses by main classification
+    """
+    courses = list(CourseClassification.objects.filter(MainClass__id=org_id, MainClass__is_active=True).values('course_id'))
+    course_ids = [x['course_id'] for x in courses]
+    return course_ids

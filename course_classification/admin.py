@@ -21,7 +21,10 @@ class CourseCategoryAdmin(admin.ModelAdmin):
 class CourseClassificationAdmin(admin.ModelAdmin):
     fields = ('course_id','MainClass', 'course_category',)
     search_fields = ('course_id',)
-    list_display = ('course_id','MainClass',)
+    list_display = ('course_id','MainClass','categories')
+    
+    def categories(self, obj):
+        return ", ".join([p.name for p in obj.course_category.all()])
 
 class MainCourseClassificationTemplateAdmin(admin.ModelAdmin):
     raw_id_fields = ('main_classification',)
