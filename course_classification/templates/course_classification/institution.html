@@ -1,0 +1,43 @@
+## mako
+
+
+<%page expression_filter="h"/>
+<%!
+  import json
+  from django.utils.translation import ugettext as _
+  from openedx.core.djangolib.js_utils import js_escaped_string, dump_js_escaped_json
+  from openedx.core.djangolib.markup import HTML
+%>
+<%inherit file="../main.html" />
+<%namespace name='static' file='../static_content.html'/>
+<%block name="pagetitle">${institution_name}</%block>
+<link rel="stylesheet" type="text/css" href="${static.url('course_classification/css/main.css')}"/> 
+<main id="main" class="open-institutions" aria-label="Content" tabindex="-1">
+    <section class="container-fluid px-0 open-institutions-banner">
+        <div class="container-center">
+          <img src="${institution_banner}" class="mx-auto openuchile-header d-block">
+        </div>
+        <img class="uchile-separator" src="${static.url('open-uchile-theme/images/uchile_separator.png')}" alt="">
+    </section>
+    <section class="container-fluid px-0 open-institutions-body">
+        <div class="container-center">
+            ${HTML(institution_html)}
+        </div>
+    </section>
+    %if (len(courses) > 0):
+    <section class="courses-container open-institutions-courses">
+        <div class="course-title-container">
+            <h2 class="course-tittle">${_("Courses").capitalize()}</h2>
+          </div>
+        <section class="highlighted-courses" style="padding-top: 25px;">
+            <section class="row courses-list">
+                %for course in courses:
+                    <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12 mb-4">
+                        <%include file="../course.html" args="course=course" />
+                    </div>
+                %endfor
+            </section>
+        </section>
+    </section>
+    %endif
+</main>
