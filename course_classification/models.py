@@ -26,6 +26,7 @@ def template_assets_path(instance, filename):
     return name
 
 class MainCourseClassification(models.Model):
+    OPTIONS = Choices((0,'index',('Portada')),(1,'search',('Buscador')),(2,'both',('Ambos')))
     name = models.CharField(max_length=255,verbose_name=_('name'),unique=True)
     banner = models.FileField(
         max_length=255,
@@ -41,6 +42,7 @@ class MainCourseClassification(models.Model):
     )
     sequence = models.IntegerField(verbose_name=_('sequence'))
     is_active = models.BooleanField(default=True, help_text=_(u'Show: True, Hide: False'))
+    visibility = models.IntegerField(choices=OPTIONS,default=2,verbose_name=_('Mostrar en'))
 
     def save(self, *args, **kwargs):
         """save the course classification asset """

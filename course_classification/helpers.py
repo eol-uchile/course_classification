@@ -28,7 +28,7 @@ def get_all_logos():
             x.logo.url, 
             reverse('course_classification:institution', kwargs={'org_id':x.id}) if MainCourseClassificationTemplate.objects.filter(main_classification=x).exists() else None
         ] 
-        for x in MainCourseClassification.objects.filter(is_active=True).exclude(logo="").order_by('sequence')
+        for x in MainCourseClassification.objects.filter(is_active=True, visibility__in=[0,2]).exclude(logo="").order_by('sequence')
         ]
     return logos
 
@@ -36,5 +36,5 @@ def get_all_main_classifications():
     """
         Return all active main classification
     """
-    orgs = [[x.id, x.name] for x in MainCourseClassification.objects.filter(is_active=True).order_by('sequence')]
+    orgs = [[x.id, x.name] for x in MainCourseClassification.objects.filter(is_active=True, visibility__in=[1,2]).order_by('sequence')]
     return orgs
