@@ -2,17 +2,18 @@
 from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
 from django.db.models import Q
 from django.urls import reverse
+from collections import OrderedDict
 
 def get_course_ctgs(courses):
     """
         Return dict with categories and its courses
     """
-    ret_courses = {}
+    ret_courses = OrderedDict()
     for main in CourseCategory.objects.all():
         ret_courses[main.id] = {'id':main.id,'name':main.name, 'seq':main.sequence,'show_opt':main.show_opt, 'courses':[]}
     for course in courses:
         try:
-            course_class = CourseClassification.objects.get(course_id=course.pk)
+            course_class = CourseClassification.objects.get(course_id=course.id)
             for ctg in course_class.course_category.all():
                 ret_courses[ctg.id]['courses'].append(course)
         except CourseClassification.DoesNotExist:
