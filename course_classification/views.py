@@ -24,19 +24,27 @@ class CourseClassificationView(View):
         Page view for institutions (MainCourseClassification)
     """
     def get(self, request, org_id):
+        lang_options = ['en', 'es_419']
         try:
+            lang = request.COOKIES.get('openedx-language-preference', 'en')
+            if lang == "es-419":
+                lang = "es_419"
+            if lang not in lang_options:
+                lang = 'en'
+            lang_options.remove(lang)
             classification = MainCourseClassification.objects.get(id=org_id, is_active=True)
             if classification.banner == "":
                 logger.info("CourseClassificationView - Classification dont have banner, MainCourseClassification id: {}".format(org_id))
                 return HttpResponseRedirect('/')
-            course_ids = [x.course_id for x in CourseClassification.objects.filter(MainClass=classification)]
-            if MainCourseClassificationTemplate.objects.filter(main_classification=classification, language="es_419").exists():
-                template = MainCourseClassificationTemplate.objects.get(main_classification=classification, language="es_419")
-            elif MainCourseClassificationTemplate.objects.filter(main_classification=classification, language="en").exists():
-                template = MainCourseClassificationTemplate.objects.get(main_classification=classification, language="en")
+            
+            if MainCourseClassificationTemplate.objects.filter(main_classification=classification, language=lang).exists():
+                template = MainCourseClassificationTemplate.objects.get(main_classification=classification, language=lang)
+            elif MainCourseClassificationTemplate.objects.filter(main_classification=classification, language=lang_options[0]).exists():
+                template = MainCourseClassificationTemplate.objects.get(main_classification=classification, language=lang_options[0])
             else:
                 logger.info("CourseClassificationView - Classification dont have es_419 or en template, MainCourseClassification id: {}".format(org_id))
                 return HttpResponseRedirect('/')
+            course_ids = [x.course_id for x in CourseClassification.objects.filter(MainClass=classification)]
             context = {
                 'institution_name': classification.name,
                 'institution_banner': classification.banner.url,

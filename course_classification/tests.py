@@ -4,7 +4,6 @@ from mock import patch, Mock, MagicMock
 from collections import namedtuple
 from django.urls import reverse
 from django.test import TestCase, Client
-from django.test import Client
 from django.conf import settings
 from django.contrib.auth.models import Permission, User
 from django.contrib.contenttypes.models import ContentType
@@ -284,6 +283,7 @@ class TestCourseClassification(ModuleStoreTestCase):
             Test institution page
         """
         # main classification does not exists
+        self.client.cookies.load({'openedx-language-preference': "en"})
         result = self.client.get(reverse('course_classification:institution', kwargs={'org_id':999}))
         request = urllib.parse.urlparse(result.url)
         self.assertEqual(result.status_code, 302)
@@ -309,10 +309,30 @@ class TestCourseClassification(ModuleStoreTestCase):
             template="hello world",
             language="en"
         ).save()
+        MainCourseClassificationTemplate(
+            main_classification=mcc1,
+            template="hola mundo",
+            language="es_419"
+        ).save()
+        self.client.cookies.load({'openedx-language-preference': "en"})
         result = self.client.get(reverse('course_classification:institution', kwargs={'org_id':mcc1.id}))
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.request['PATH_INFO'], '/institutions/1/')
+        self.assertTrue('hello world' in result._container[0].decode())
 
+        self.client.cookies.load({'openedx-language-preference': "es-419"})
+        result = self.client.get(reverse('course_classification:institution', kwargs={'org_id':mcc1.id}))
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.request['PATH_INFO'], '/institutions/1/')
+        self.assertTrue('hola mundo' in result._container[0].decode())
+
+        # main classification does not have language template
+        self.client.cookies.load({'openedx-language-preference': "fr"})
+        result = self.client.get(reverse('course_classification:institution', kwargs={'org_id':mcc1.id}))
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.request['PATH_INFO'], '/institutions/1/')
+        self.assertTrue('hello world' in result._container[0].decode())
+        
         # main classification does not have template
         mcc2 = MainCourseClassification(
             name="MCC2",
@@ -329,6 +349,7 @@ class TestCourseClassification(ModuleStoreTestCase):
             is_active=True
             )
         mcc2.save()
+        self.client.cookies.load({'openedx-language-preference': "en"})
         result = self.client.get(reverse('course_classification:institution', kwargs={'org_id':mcc2.id}))
         request = urllib.parse.urlparse(result.url)
         self.assertEqual(result.status_code, 302)
@@ -354,6 +375,7 @@ class TestCourseClassification(ModuleStoreTestCase):
             template="hello world",
             language="en"
         ).save()
+        self.client.cookies.load({'openedx-language-preference': "en"})
         result = self.client.get(reverse('course_classification:institution', kwargs={'org_id':mcc3.id}))
         request = urllib.parse.urlparse(result.url)
         self.assertEqual(result.status_code, 302)
