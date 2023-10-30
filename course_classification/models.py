@@ -104,6 +104,7 @@ class CourseClassification(models.Model):
     course_id = CourseKeyField(max_length=255, db_index=True, unique=True,verbose_name=_('course'))
     MainClass = models.ForeignKey(MainCourseClassification,verbose_name='Clasificación Principal', on_delete=models.CASCADE, blank=True, null=True)
     course_category = models.ManyToManyField(CourseCategory,verbose_name='Categorias', blank=True)
-    
+    is_featured_course = models.BooleanField(default=False, verbose_name='Curso Destacado', help_text=_(u'if the course is featured'))
+
     class Meta(object):
         ordering = ('course_id',)

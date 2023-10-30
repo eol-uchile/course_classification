@@ -19,9 +19,9 @@ class CourseCategoryAdmin(admin.ModelAdmin):
     search_fields = ['name', 'sequence', 'show_opt',]
 
 class CourseClassificationAdmin(admin.ModelAdmin):
-    fields = ('course_id','MainClass', 'course_category',)
+    fields = ('course_id','MainClass', 'course_category','is_featured_course')
     search_fields = ('course_id',)
-    list_display = ('course_id','MainClass','categories')
+    list_display = ('course_id','MainClass','categories','is_featured_course')
     
     def categories(self, obj):
         return ", ".join([p.name for p in obj.course_category.all()])

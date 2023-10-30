@@ -1,5 +1,5 @@
 .open-institutions .open-institutions-body, .open-institutions .open-institutions-courses{
-    width: 90%;
+    width: 100%;
     margin: auto;
 }
 .open-institutions .open-institutions-banner{
@@ -8,22 +8,26 @@
 .open-institutions .open-institutions-courses{
     padding-top: 45px;
 }
-@media screen and (min-width: 991px) {
-    .open-institutions .open-institutions-body, .open-institutions .open-institutions-courses{
-        width: 70%;
-        margin: auto;
-    }
-}
 .open-institutions .course-title-container{
-    background: #172c6b;
-    padding: 2px 20px;
+    background: #fff;
+    padding: 0;
     display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
 }
-.open-institutions .course-tittle {
-    font-size: 24px;
-    color: #fff;
+.open-institutions .course-tittle-institution {
+    font-size: 30px;
+    color: #565756;
     text-align: center;
     font-weight: 1000;
-    text-transform: uppercase;
-    display: contents;
+    margin-bottom: 0;
+    text-transform: capitalize;
+}
+.course-border{
+    border-top: 3px solid #172c6b;
+    width: 60px;
+    display: flex;
+    margin-left: auto;
+    margin-right: auto;
 }

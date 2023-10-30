@@ -28,18 +28,21 @@ class TestCourseClassification(ModuleStoreTestCase):
             org='mss',
             course='999',
             display_name='2020',
+            catalog_visibility="both",
             emit_signals=True)
         aux = CourseOverview.get_from_id(self.course.id)
         self.course2 = CourseFactory.create(
             org='mss',
             course='222',
             display_name='2021',
+            catalog_visibility="both",
             emit_signals=True)
         aux = CourseOverview.get_from_id(self.course2.id)
         self.course3 = CourseFactory.create(
             org='mss',
             course='333',
             display_name='2021',
+            catalog_visibility="none",
             emit_signals=True)
         aux = CourseOverview.get_from_id(self.course3.id)
         with patch('common.djangoapps.student.models.cc.User.save'):
@@ -82,12 +85,67 @@ class TestCourseClassification(ModuleStoreTestCase):
         cc2.save()
         cc2.course_category.add(cctg2)
         cc2.save()
-        response = helpers.get_course_ctgs([self.course, self.course2, self.course3])
+        response, mc_courses = helpers.get_course_ctgs([self.course, self.course2, self.course3])
         expected = {
             cctg1.id: {'id':cctg1.id,'name':cctg1.name, 'seq':cctg1.sequence,'show_opt':cctg1.show_opt, 'courses':[self.course]},
             cctg2.id: {'id':cctg2.id,'name':cctg2.name, 'seq':cctg2.sequence,'show_opt':cctg2.show_opt, 'courses':[self.course, self.course2]},
             }
         self.assertEqual(len(response), 2)
+        self.assertEqual(len(mc_courses), 0)
+        self.assertEqual(response[cctg1.id]['id'], expected[cctg1.id]['id'])
+        self.assertEqual(response[cctg1.id]['name'], expected[cctg1.id]['name'])
+        self.assertEqual(response[cctg1.id]['show_opt'], expected[cctg1.id]['show_opt'])
+        self.assertEqual(response[cctg1.id]['courses'], expected[cctg1.id]['courses'])
+        self.assertEqual(response[cctg2.id]['id'], expected[cctg2.id]['id'])
+        self.assertEqual(response[cctg2.id]['name'], expected[cctg2.id]['name'])
+        self.assertEqual(response[cctg2.id]['show_opt'], expected[cctg2.id]['show_opt'])
+        self.assertEqual(response[cctg2.id]['courses'], expected[cctg2.id]['courses'])
+
+    def test_helpers_get_course_ctgs_featured(self):
+        """
+            Test get_course_ctgs() normal process with featured courses
+        """
+        cctg1 = CourseCategory.objects.create(name="T1", sequence=1, show_opt=2)
+        cctg2 = CourseCategory.objects.create(name="T2", sequence=2, show_opt=2)
+        cc = CourseClassification.objects.create(course_id=self.course.id)
+        cc.save()
+        cc.course_category.add(cctg1)
+        cc.course_category.add(cctg2)
+        cc.save()
+        cc2 = CourseClassification.objects.create(course_id=self.course2.id, is_featured_course=True)
+        cc2.save()
+        cc2.course_category.add(cctg2)
+        cc2.save()
+        response, mc_courses = helpers.get_course_ctgs([self.course, self.course2, self.course3])
+        expected = {
+            'featured': [self.course2],
+            }
+        self.assertEqual(len(response), 1)
+        self.assertEqual(len(mc_courses), 0)
+        self.assertEqual(response, expected)
+
+    def test_helpers_get_course_ctgs_featured_no_courses(self):
+        """
+            Test get_course_ctgs() normal process with featured courses created but not in catalog
+        """
+        cctg1 = CourseCategory.objects.create(name="T1", sequence=1, show_opt=2)
+        cctg2 = CourseCategory.objects.create(name="T2", sequence=2, show_opt=2)
+        cc = CourseClassification.objects.create(course_id=self.course.id)
+        cc.save()
+        cc.course_category.add(cctg1)
+        cc.course_category.add(cctg2)
+        cc.save()
+        cc2 = CourseClassification.objects.create(course_id=self.course2.id, is_featured_course=True)
+        cc2.save()
+        cc2.course_category.add(cctg2)
+        cc2.save()
+        response, mc_courses = helpers.get_course_ctgs([self.course, self.course3])
+        expected = {
+            cctg1.id: {'id':cctg1.id,'name':cctg1.name, 'seq':cctg1.sequence,'show_opt':cctg1.show_opt, 'courses':[self.course]},
+            cctg2.id: {'id':cctg2.id,'name':cctg2.name, 'seq':cctg2.sequence,'show_opt':cctg2.show_opt, 'courses':[self.course]},
+            }
+        self.assertEqual(len(response), 2)
+        self.assertEqual(len(mc_courses), 0)
         self.assertEqual(response[cctg1.id]['id'], expected[cctg1.id]['id'])
         self.assertEqual(response[cctg1.id]['name'], expected[cctg1.id]['name'])
         self.assertEqual(response[cctg1.id]['show_opt'], expected[cctg1.id]['show_opt'])
@@ -103,12 +161,13 @@ class TestCourseClassification(ModuleStoreTestCase):
         """
         cctg1 = CourseCategory.objects.create(name="T1", sequence=1, show_opt=2)
         cctg2 = CourseCategory.objects.create(name="T2", sequence=2, show_opt=2)
-        response = helpers.get_course_ctgs([self.course, self.course2, self.course3])
+        response, mc_courses = helpers.get_course_ctgs([self.course, self.course2, self.course3])
         expected = {
             cctg1.id: {'id':cctg1.id,'name':cctg1.name, 'seq':cctg1.sequence,'show_opt':cctg1.show_opt, 'courses':[]},
             cctg2.id: {'id':cctg2.id,'name':cctg2.name, 'seq':cctg2.sequence,'show_opt':cctg2.show_opt, 'courses':[]},
             }
         self.assertEqual(len(response), 2)
+        self.assertEqual(len(mc_courses), 0)
         self.assertEqual(response[cctg1.id]['id'], expected[cctg1.id]['id'])
         self.assertEqual(response[cctg1.id]['name'], expected[cctg1.id]['name'])
         self.assertEqual(response[cctg1.id]['show_opt'], expected[cctg1.id]['show_opt'])
@@ -122,9 +181,10 @@ class TestCourseClassification(ModuleStoreTestCase):
         """
             Test get_course_ctgs() without categories configured
         """
-        response = helpers.get_course_ctgs([self.course, self.course2, self.course3])
+        response, mc_courses = helpers.get_course_ctgs([self.course, self.course2, self.course3])
         expected = {}
         self.assertEqual(len(response), 0)
+        self.assertEqual(len(mc_courses), 0)
 
     def test_helpers_get_course_course_wo_ctgs(self):
         """
@@ -134,9 +194,10 @@ class TestCourseClassification(ModuleStoreTestCase):
         cc.save()
         cc2 = CourseClassification.objects.create(course_id=self.course2.id)
         cc2.save()
-        response = helpers.get_course_ctgs([self.course, self.course2, self.course3])
+        response, mc_courses = helpers.get_course_ctgs([self.course, self.course2, self.course3])
         expected = {}
         self.assertEqual(len(response), 0)
+        self.assertEqual(len(mc_courses), 0)
 
     def test_helpers_get_all_logos(self):
         """
@@ -278,6 +339,165 @@ class TestCourseClassification(ModuleStoreTestCase):
         response = helpers.get_courses_by_classification(999)
         self.assertEqual(response, [])
     
+    def test_get_featured_courses(self):
+        """
+            test get_featured_courses() normal process
+        """
+        mcc1 = MainCourseClassification(
+            name="MCC1",
+            logo=SimpleUploadedFile(
+                "test.png",
+                b"test" 
+            ),
+            banner=SimpleUploadedFile(
+                "banner.png",
+                b"banner" 
+            ),
+            sequence=1,
+            visibility=2,
+            is_active=True
+            )
+        mcc1.save()
+        cc = CourseClassification.objects.create(course_id=self.course.id, MainClass=mcc1, is_featured_course=True)
+        cc.save()
+        cc2 = CourseClassification.objects.create(course_id=self.course2.id, MainClass=mcc1, is_featured_course=False)
+        cc2.save()
+        expected = {
+            'name': mcc1.name,
+            'logo': mcc1.logo
+        }
+        response, mc_courses = helpers.get_featured_courses()
+        self.assertEqual(len(response), 1)
+        self.assertEqual(list(response)[0].id, self.course.id)
+        self.assertEqual(len(mc_courses), 1)
+        self.assertEqual(mc_courses[self.course.id], expected)
+
+    def test_get_featured_courses_no_courses(self):
+        """
+            test get_featured_courses when featured coures is empty
+        """
+        mcc1 = MainCourseClassification(
+            name="MCC1",
+            logo=SimpleUploadedFile(
+                "test.png",
+                b"test" 
+            ),
+            banner=SimpleUploadedFile(
+                "banner.png",
+                b"banner" 
+            ),
+            sequence=1,
+            visibility=2,
+            is_active=True
+            )
+        mcc1.save()
+        cc = CourseClassification.objects.create(course_id=self.course.id, MainClass=mcc1, is_featured_course=False)
+        cc.save()
+        cc2 = CourseClassification.objects.create(course_id=self.course2.id, MainClass=mcc1, is_featured_course=False)
+        cc2.save()
+        response, mc_courses = helpers.get_featured_courses()
+        self.assertEqual(len(response), 0)
+        self.assertEqual(len(mc_courses), 0)
+
+    def test_set_data_courses(self):
+        """
+            test set data course normal process
+        """
+        mcc1 = MainCourseClassification(
+            name="MCC1",
+            logo=SimpleUploadedFile(
+                "test.png",
+                b"test" 
+            ),
+            banner=SimpleUploadedFile(
+                "banner.png",
+                b"banner" 
+            ),
+            sequence=2,
+            visibility=2,
+            is_active=True
+            )
+        mcc1.save()
+        mcc2 = MainCourseClassification(
+            name="MCC2",
+            sequence=1,
+            visibility=1,
+            is_active=False
+            )
+        mcc2.save()
+        cc = CourseClassification.objects.create(course_id=self.course.id, MainClass=mcc1)
+        cc.save()
+        cc2 = CourseClassification.objects.create(course_id=self.course2.id, MainClass=mcc2)
+        cc2.save()
+        response = helpers.set_data_courses([{'_id':str(self.course.id)},{'_id':str(self.course2.id)},{'_id':str(self.course3.id)}])
+        expected = [
+            {'_id':str(self.course.id), 'extra_data':{
+                                            'short_description' : None, 
+                                            'advertised_start' : None, 
+                                            'display_org_with_default' : 'mss',
+                                            'main_classification':{
+                                                'name':mcc1.name, 
+                                                'logo':mcc1.logo.url 
+                                            }
+                                        }
+                                    },
+            {'_id':str(self.course2.id), 'extra_data':{
+                                            'short_description' : None, 
+                                            'advertised_start' : None, 
+                                            'display_org_with_default' : 'mss',
+                                            'main_classification':{
+                                                'name':mcc2.name, 
+                                                'logo':''
+                                            }
+                                        }
+                                    },
+            {'_id':str(self.course3.id), 'extra_data':{
+                                            'short_description' : None, 
+                                            'advertised_start' : None, 
+                                            'display_org_with_default' : 'mss',
+                                            'main_classification':{}
+                                        }
+                                    },
+            ]
+        self.assertEqual(response, expected)
+
+    def test_set_data_courses_no_courses(self):
+        """
+            test set data courses when course id from elasticsearch doesnt exists in course overviews
+        """
+        mcc1 = MainCourseClassification(
+            name="MCC1",
+            logo=SimpleUploadedFile(
+                "test.png",
+                b"test" 
+            ),
+            banner=SimpleUploadedFile(
+                "banner.png",
+                b"banner" 
+            ),
+            sequence=2,
+            visibility=2,
+            is_active=True
+            )
+        mcc1.save()
+        cc = CourseClassification.objects.create(course_id=self.course.id, MainClass=mcc1)
+        cc.save()
+        response = helpers.set_data_courses([{'_id':str(self.course.id)},{'_id':'course-v1:eol+Test+2023'},])
+        expected = [
+            {'_id':str(self.course.id), 'extra_data':{
+                                            'short_description' : None, 
+                                            'advertised_start' : None, 
+                                            'display_org_with_default' : 'mss',
+                                            'main_classification':{
+                                                'name':mcc1.name, 
+                                                'logo':mcc1.logo.url 
+                                            }
+                                        }
+                                    },
+            {'_id':'course-v1:eol+Test+2023', 'extra_data':{'main_classification':{}}},
+            ]
+        self.assertEqual(response, expected)
+
     def test_view(self):
         """
             Test institution page

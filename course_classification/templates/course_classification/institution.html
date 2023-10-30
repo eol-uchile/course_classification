@@ -19,24 +19,23 @@
         </div>
         <img class="uchile-separator" src="${static.url('open-uchile-theme/images/uchile_separator.png')}" alt="">
     </section>
-    <section class="container-fluid px-0 open-institutions-body">
-        <div class="container-center">
-            ${HTML(institution_html)}
-        </div>
-    </section>
+
+    ${HTML(institution_html)}
+
     %if (len(courses) > 0):
     <section class="courses-container open-institutions-courses">
         <div class="course-title-container">
-            <h2 class="course-tittle">${_("Courses").capitalize()}</h2>
-          </div>
+            <h2 class="course-tittle-institution">${_("Courses").upper()}</h2>
+            <div class="course-border"></div>
+        </div>
         <section class="highlighted-courses" style="padding-top: 25px;">
-            <section class="row courses-list">
+            <ul class="courses-list">
                 %for course in courses:
-                    <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12 mb-4">
-                        <%include file="../course.html" args="course=course" />
-                    </div>
+                    <li class="mb-3">
+                        <%include file="../course.html" args="course=course, main_class={}" />
+                    </li>
                 %endfor
-            </section>
+            </ul>
         </section>
     </section>
     %endif
