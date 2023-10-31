@@ -31,3 +31,8 @@
     margin-left: auto;
     margin-right: auto;
 }
+.open-container-center{
+    position: relative;
+    text-align: center;
+    color:#565756;
+}
