@@ -55,9 +55,11 @@
         <section class="highlighted-courses" style="padding-top: 25px;">
             <ul class="courses-list">
                 %for course in courses:
-                    <li class="mb-3">
-                        <%include file="../course.html" args="course=course, main_class={}" />
-                    </li>
+                    %if course.catalog_visibility == 'both':
+                        <li class="mb-3">
+                            <%include file="../course.html" args="course=course, main_class={}" />
+                        </li>
+                    %endif
                 %endfor
             </ul>
         </section>
