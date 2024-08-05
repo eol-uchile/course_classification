@@ -2,9 +2,9 @@ import setuptools
 
 setuptools.setup(
     name="course_classification",
-    version="0.0.1",
-    author="Luis Santana",
-    author_email="luis.santana@uchile.cl",
+    version="0.2.0",
+    author="Oficina EOL UChile",
+    author_email="eol-ing@uchile.cl",
     description=".",
     url="https://eol.uchile.cl",
     packages=setuptools.find_packages(),
