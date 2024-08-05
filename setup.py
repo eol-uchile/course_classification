@@ -8,6 +8,9 @@ setuptools.setup(
     description=".",
     url="https://eol.uchile.cl",
     packages=setuptools.find_packages(),
+    install_requires = [
+        "portal_api @ git+https://github.com/eol-uchile/portal_api@0.3#egg=portal_api"
+    ],
     classifiers=[
         "Programming Language :: Python :: 2",
         "License :: OSI Approved :: MIT License",
