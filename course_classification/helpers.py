@@ -3,6 +3,8 @@ from .models import MainCourseClassification, CourseClassification, MainCourseCl
 from django.db.models import Q
 from django.urls import reverse
 from collections import OrderedDict
+from datetime import datetime
+from django.utils import timezone
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys import InvalidKeyError
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
@@ -11,11 +13,12 @@ log = logging.getLogger(__name__)
 
 def get_course_ctgs(courses):
     """
-        Return dict with categories and its courses
+        Return dict with categories and its courses, sorted by proximity to today's date
     """
     ret_courses = OrderedDict()
     ret_courses['featured'] = []
     mc_courses= {}
+    today = timezone.now()  # Get timezone-aware current datetime
     if CourseClassification.objects.filter(is_featured_course=True).exists():
         for course in courses:
             try:
@@ -23,10 +26,13 @@ def get_course_ctgs(courses):
                 if course_class.is_featured_course:
                     ret_courses['featured'].append(course)
                     if course_class.MainClass:
-                        mc_courses[course.id] = {'name': course_class.MainClass.name, 'logo': course_class.MainClass.logo}
+                        days_left = (course.start_date - today).days
+                        mc_courses[course.id] = {'name': course_class.MainClass.name, 'logo': course_class.MainClass.logo, 'days_left': days_left}
             except CourseClassification.DoesNotExist:
                 pass
+        # Sort featured courses by proximity to today's date
         if ret_courses['featured']:
+            ret_courses['featured'].sort(key=lambda course: abs((course.start_date - today).days))
             return ret_courses, mc_courses
     del ret_courses['featured']
 
@@ -37,11 +43,15 @@ def get_course_ctgs(courses):
         try:
             course_class = CourseClassification.objects.get(course_id=course.id)
             if course_class.MainClass:
-                mc_courses[course.id] = {'name': course_class.MainClass.name, 'logo': course_class.MainClass.logo}
+                days_left = (course.start_date - today).days
+                mc_courses[course.id] = {'name': course_class.MainClass.name, 'logo': course_class.MainClass.logo,'days_left': days_left}
             for ctg in course_class.course_category.all():
                 ret_courses[ctg.id]['courses'].append(course)
         except CourseClassification.DoesNotExist:
             pass
+    # Sort courses in each category by proximity to today's date
+    for ctg_id in ret_courses:
+        ret_courses[ctg_id]['courses'].sort(key=lambda course: abs((course.start_date - today).days))
     return ret_courses, mc_courses
 
 def get_featured_courses():
