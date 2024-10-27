@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 def get_course_ctgs(courses):
     """
-        Return dict with categories and its courses, sorted by proximity to today's date
+    Return dict with categories and its courses, sorted by enrollment and date criteria.
     """
     ret_courses = OrderedDict()
     ret_courses['featured'] = []
@@ -30,28 +30,61 @@ def get_course_ctgs(courses):
                         mc_courses[course.id] = {'name': course_class.MainClass.name, 'logo': course_class.MainClass.logo, 'days_left': days_left}
             except CourseClassification.DoesNotExist:
                 pass
-        # Sort featured courses by proximity to today's date
-        if ret_courses['featured']:
-            ret_courses['featured'].sort(key=lambda course: abs((course.start_date - today).days))
-            return ret_courses, mc_courses
-    del ret_courses['featured']
+    
+    # Classify courses in 'featured' list by state
+    enrollable_courses = []
+    upcoming_enrollable_courses = []
+    upcoming_notenrollable_courses = []
+    ongoing_notenrollable_courses = []
+    completed_courses = []
+    
+    for course in ret_courses['featured']:
+        # Determine course state with enhanced logic for null enrollment dates and invitation-only courses
+        enroll_start = course.enrollment_start if course.enrollment_start else course.start_date
+        enroll_end = course.enrollment_end if course.enrollment_end else course.end_date
+        is_invitation_only = getattr(course, 'invitation_only', False)  # Assume there's a field 'invitation_only' to check
 
-    for main in CourseCategory.objects.all().order_by('sequence'):
-        ret_courses[main.id] = {'id':main.id,'name':main.name, 'seq':main.sequence,'show_opt':main.show_opt, 'courses':[]}
-    mc_courses= {}
-    for course in courses:
-        try:
-            course_class = CourseClassification.objects.get(course_id=course.id)
-            if course_class.MainClass:
-                days_left = (course.start_date - today).days
-                mc_courses[course.id] = {'name': course_class.MainClass.name, 'logo': course_class.MainClass.logo,'days_left': days_left}
-            for ctg in course_class.course_category.all():
-                ret_courses[ctg.id]['courses'].append(course)
-        except CourseClassification.DoesNotExist:
-            pass
-    # Sort courses in each category by proximity to today's date
-    for ctg_id in ret_courses:
-        ret_courses[ctg_id]['courses'].sort(key=lambda course: abs((course.start_date - today).days))
+        if is_invitation_only:
+            # Invitation-only courses go to upcoming_notenrollable or ongoing_notenrollable
+            if course.start_date > today:
+                course.course_state = 'upcoming_notenrollable'
+                upcoming_notenrollable_courses.append(course)
+            elif course.start_date <= today:
+                course.course_state = 'ongoing_notenrollable'
+                ongoing_notenrollable_courses.append(course)
+        elif enroll_start <= today and (not enroll_end or enroll_end > today):
+            if course.start_date <= today:
+                course.course_state = 'enrollable'
+                enrollable_courses.append(course)
+            else:
+                course.course_state = 'upcoming_enrollable'
+                upcoming_enrollable_courses.append(course)
+        elif course.start_date > today:
+            course.course_state = 'upcoming_notenrollable'
+            upcoming_notenrollable_courses.append(course)
+        elif course.start_date <= today and (not course.end_date or course.end_date > today):
+            course.course_state = 'ongoing_notenrollable'
+            ongoing_notenrollable_courses.append(course)
+        elif course.end_date and course.end_date <= today:
+            course.course_state = 'completed'
+            completed_courses.append(course)
+    
+    # Sorting each state group by proximity to the present
+    enrollable_courses.sort(key=lambda course: abs((course.start_date - today).days))
+    upcoming_enrollable_courses.sort(key=lambda course: abs((course.start_date - today).days))
+    upcoming_notenrollable_courses.sort(key=lambda course: abs((course.start_date - today).days))
+    ongoing_notenrollable_courses.sort(key=lambda course: abs((course.start_date - today).days))
+    completed_courses.sort(key=lambda course: abs((course.end_date - today).days) if course.end_date else float('inf'))
+    
+    # Reconstruct the 'featured' list in the specified order
+    ret_courses['featured'] = (
+        enrollable_courses + 
+        upcoming_enrollable_courses + 
+        upcoming_notenrollable_courses + 
+        ongoing_notenrollable_courses + 
+        completed_courses
+    )
+    
     return ret_courses, mc_courses
 
 def get_featured_courses():
