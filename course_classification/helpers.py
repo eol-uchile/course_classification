@@ -10,7 +10,15 @@ from opaque_keys import InvalidKeyError
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 import logging
 log = logging.getLogger(__name__)
+    
+def sort_key(course, today, key='start'):
+    date = getattr(course, key, None)
+    if date:
+        return abs((date - today).days)
+    else:
+        return float('inf')
 
+    
 def get_course_ctgs(courses):
     """
     Return dict with categories and its courses, sorted by enrollment and date criteria.
@@ -166,7 +174,6 @@ def classify_and_sort_courses(courses, today):
     """
     Classify and sort courses based on their state and proximity to the current date.
     """
-    # Classify courses by state
     enrollable_courses = []
     upcoming_enrollable_courses = []
     upcoming_notenrollable_courses = []
@@ -214,24 +221,11 @@ def classify_and_sort_courses(courses, today):
         else:
             pass
 
-    # Sorting each state group by proximity to the present
-    def sort_key_start(course):
-        if course.start:
-            return abs((course.start - today).days)
-        else:
-            return float('inf')
-
-    def sort_key_end(course):
-        if course.end:
-            return abs((course.end - today).days)
-        else:
-            return float('inf')
-
-    enrollable_courses.sort(key=sort_key_start)
-    upcoming_enrollable_courses.sort(key=sort_key_start)
-    upcoming_notenrollable_courses.sort(key=sort_key_start)
-    ongoing_notenrollable_courses.sort(key=sort_key_start)
-    completed_courses.sort(key=sort_key_end)
+    enrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
+    upcoming_enrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
+    upcoming_notenrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
+    ongoing_notenrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
+    completed_courses.sort(key=lambda course: sort_key(course, today, key='end'))
 
     # Combine the lists
     sorted_courses = (
@@ -242,14 +236,3 @@ def classify_and_sort_courses(courses, today):
         completed_courses
     )
     return sorted_courses
-
-
-
-
-
-
-
-
-
-
-
