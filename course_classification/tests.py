@@ -20,6 +20,7 @@ from . import helpers
 from .views import CourseClassificationView
 from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
 from django.core.files.uploadedfile import SimpleUploadedFile
+from datetime import datetime
   
 class TestCourseClassification(ModuleStoreTestCase):
     def setUp(self):
@@ -29,21 +30,24 @@ class TestCourseClassification(ModuleStoreTestCase):
             course='999',
             display_name='2020',
             catalog_visibility="both",
-            emit_signals=True)
+            emit_signals=True,
+            start_date=datetime(2023, 1, 1))
         aux = CourseOverview.get_from_id(self.course.id)
         self.course2 = CourseFactory.create(
             org='mss',
             course='222',
             display_name='2021',
             catalog_visibility="both",
-            emit_signals=True)
+            emit_signals=True,
+            start_date=datetime(2023, 2, 1))
         aux = CourseOverview.get_from_id(self.course2.id)
         self.course3 = CourseFactory.create(
             org='mss',
             course='333',
             display_name='2021',
             catalog_visibility="none",
-            emit_signals=True)
+            emit_signals=True,
+            start_date=datetime(2023, 5, 1))
         aux = CourseOverview.get_from_id(self.course3.id)
         with patch('common.djangoapps.student.models.cc.User.save'):
             # staff user
