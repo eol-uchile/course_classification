@@ -1,14 +1,17 @@
 # -*- coding:utf-8 -*-
-from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
-from django.db.models import Q
-from django.urls import reverse
-from collections import OrderedDict
-from datetime import datetime
-from django.utils import timezone
-from opaque_keys.edx.keys import CourseKey
-from opaque_keys import InvalidKeyError
-from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 import logging
+import math
+
+from collections import OrderedDict
+
+from django.urls import reverse
+from django.utils import timezone
+
+from opaque_keys.edx.keys import CourseKey
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+
+from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
+
 log = logging.getLogger(__name__)
     
 def sort_key(course, today, key='start'):
@@ -23,7 +26,7 @@ def get_course_ctgs(courses):
     """
     Return dict with categories and its courses, sorted by enrollment and date criteria.
     """
-    ret_courses = OrderedDict()
+    ctg_courses = OrderedDict()
     mc_courses= {}
     today = timezone.now()  # Get timezone-aware current datetime
     featured_courses = []
@@ -34,26 +37,22 @@ def get_course_ctgs(courses):
                 course_start = getattr(course, 'start', None)
                 if course_class.is_featured_course:
                     featured_courses.append(course)
-                    if course_class.MainClass:
-                        days_left = (course_start - today).days
-                        mc_courses[course.id] = {'name': course_class.MainClass.name,'logo': course_class.MainClass.logo,'days_left': days_left}
-                else:
-                    if course_class.MainClass:
-                        days_left = (course_start - today).days
-                        mc_courses[course.id] = {'name': course_class.MainClass.name, 'logo': course_class.MainClass.logo, 'days_left': days_left}
+                if course_class.MainClass:
+                    days_left = (course_start - today).days
+                    mc_courses[course.id] = {'name': course_class.MainClass.name,'logo': course_class.MainClass.logo, 'days_left': days_left}
             except CourseClassification.DoesNotExist:
                 pass
-    if featured_courses:
+    if len(featured_courses) > 0:
         # Apply classification and sorting to featured courses
-        ret_courses['featured'] = classify_and_sort_courses(featured_courses, today)
+        ctg_courses['featured'] = classify_and_sort_courses(featured_courses, today)
         # Early return to match original behavior
-        return ret_courses, mc_courses
+        return ctg_courses, mc_courses
 
     # If no featured courses, proceed to build categories
     categories = CourseCategory.objects.all().order_by('sequence')
     if categories.exists():
-        for main in categories:
-            ret_courses[main.id] = {'id':main.id,'name':main.name, 'seq':main.sequence,'show_opt':main.show_opt, 'courses':[]}
+        for ctg in categories:
+            ctg_courses[ctg.id] = {'id':ctg.id,'name':ctg.name, 'seq':ctg.sequence,'show_opt':ctg.show_opt, 'courses':[]}
         # Collect courses into categories
         for course in courses:
             try:
@@ -63,18 +62,18 @@ def get_course_ctgs(courses):
                     days_left = (course_start - today).days if course_start else None
                     mc_courses[course.id] = {'name': course_class.MainClass.name, 'logo': course_class.MainClass.logo,'days_left': days_left}
                 for ctg in course_class.course_category.all():
-                    ret_courses[ctg.id]['courses'].append(course)
+                    ctg_courses[ctg.id]['courses'].append(course)
             except CourseClassification.DoesNotExist:
                 pass
         # Apply classification and sorting to courses in each category
-        for key in ret_courses:
+        for key in ctg_courses:
             if key != 'featured':
-                category_courses = ret_courses[key]['courses']
-                ret_courses[key]['courses'] = classify_and_sort_courses(category_courses, today)
+                category_courses = ctg_courses[key]['courses']
+                ctg_courses[key]['courses'] = classify_and_sort_courses(category_courses, today)
     else:
-        # If no categories are found and no featured courses, ret_courses remains empty
-        ret_courses = OrderedDict()
-    return ret_courses, mc_courses
+        # If no categories are found and no featured courses, ctg_courses remains empty
+        ctg_courses = OrderedDict()
+    return ctg_courses, mc_courses
 
 def get_featured_courses():
     """
