@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from mock import patch
 from django.urls import reverse
 from django.test import Client
 import urllib.parse
