@@ -22,31 +22,7 @@
 
     ${HTML(institution_html)}
 
-    %if institution_name.upper() == 'UABIERTA':
-        <%!
-            from portal_api.utils import get_course, clean_data_course_active
-            ua_courses = []
-            url = "https://uabierta.uchile.cl/"
-            aux_courses = get_course( url )
-            if aux_courses is not None:
-                ua_courses = clean_data_course_active(aux_courses['results'], url, 'uabierta')
-        %>
-        <section class="courses-container open-institutions-courses">
-            <div class="course-title-container">
-                <h2 class="course-tittle-institution">${_("Courses").upper()}</h2>
-                <div class="course-border"></div>
-            </div>
-            <section class="highlighted-courses" style="padding-top: 25px;">
-                <ul class="courses-list">
-                    %for course in ua_courses:
-                        <li class="mb-3">
-                            <%include file="../course_portal.html" args="course=course" />
-                        </li>
-                    %endfor
-                </ul>
-            </section>
-        </section>
-    %elif (len(courses) > 0):
+    %if (len(courses) > 0):
     <section class="courses-container open-institutions-courses">
         <div class="course-title-container">
             <h2 class="course-tittle-institution">${_("Courses").upper()}</h2>
