@@ -2,14 +2,9 @@
 import os
 from django.conf import settings
 from django.db import models
-from django.contrib.auth.models import User
 from model_utils import Choices
-from django.core.exceptions import ValidationError
 from opaque_keys.edx.django.models import CourseKeyField
 from django.utils.translation import ugettext_lazy as _
-
-from opaque_keys import InvalidKeyError
-from opaque_keys.edx.keys import CourseKey
 
 def template_assets_path(instance, filename):
     """
