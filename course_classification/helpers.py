@@ -21,6 +21,17 @@ def sort_key(course, today, key='start'):
     else:
         return float('inf')
 
+def set_time_left(course_start,today):
+    days_left = (course_start - today).days
+    year = math.trunc(days_left/365)
+    month = math.trunc(days_left/30)
+    if(year>0):
+        time_left = [year,'y']
+    elif(month>0 and month<=12):
+        time_left = [month,'m']
+    elif(days_left<=31):
+        time_left = [days_left,'d']
+    return time_left
     
 def get_course_ctgs(courses):
     """
@@ -35,11 +46,11 @@ def get_course_ctgs(courses):
             try:
                 course_class = CourseClassification.objects.get(course_id=course.id)
                 course_start = getattr(course, 'start', None)
+                setattr(course, 'time_left', set_time_left(course_start, today))
                 if course_class.is_featured_course:
                     featured_courses.append(course)
                 if course_class.MainClass:
-                    days_left = (course_start - today).days
-                    mc_courses[course.id] = {'name': course_class.MainClass.name,'logo': course_class.MainClass.logo, 'days_left': days_left}
+                    mc_courses[course.id] = {'name': course_class.MainClass.name,'logo': course_class.MainClass.logo}
             except CourseClassification.DoesNotExist:
                 pass
     if len(featured_courses) > 0:
@@ -58,9 +69,9 @@ def get_course_ctgs(courses):
             try:
                 course_class = CourseClassification.objects.get(course_id=course.id)
                 course_start = getattr(course, 'start', None)
+                setattr(course, 'time_left', set_time_left(course_start, today))
                 if course_class.MainClass:
-                    days_left = (course_start - today).days
-                    mc_courses[course.id] = {'name': course_class.MainClass.name, 'logo': course_class.MainClass.logo,'days_left': days_left}
+                    mc_courses[course.id] = {'name': course_class.MainClass.name, 'logo': course_class.MainClass.logo}
                 for ctg in course_class.course_category.all():
                     ctg_courses[ctg.id]['courses'].append(course)
             except CourseClassification.DoesNotExist:
