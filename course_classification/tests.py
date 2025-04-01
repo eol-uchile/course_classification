@@ -21,7 +21,7 @@ from .views import CourseClassificationView
 from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
 from django.core.files.uploadedfile import SimpleUploadedFile
 from datetime import datetime
-  
+from django.utils import timezone
 class TestCourseClassification(ModuleStoreTestCase):
     def setUp(self):
         super(TestCourseClassification, self).setUp()
@@ -31,7 +31,7 @@ class TestCourseClassification(ModuleStoreTestCase):
             display_name='2020',
             catalog_visibility="both",
             emit_signals=True,
-            start_date=datetime(2023, 1, 1))
+            start_date='2023-03-01T00:00:00+00:00')
         aux = CourseOverview.get_from_id(self.course.id)
         self.course2 = CourseFactory.create(
             org='mss',
@@ -39,7 +39,7 @@ class TestCourseClassification(ModuleStoreTestCase):
             display_name='2021',
             catalog_visibility="both",
             emit_signals=True,
-            start_date=datetime(2023, 2, 1))
+            start_date='2023-02-01T00:00:00+00:00')
         aux = CourseOverview.get_from_id(self.course2.id)
         self.course3 = CourseFactory.create(
             org='mss',
@@ -47,7 +47,7 @@ class TestCourseClassification(ModuleStoreTestCase):
             display_name='2021',
             catalog_visibility="none",
             emit_signals=True,
-            start_date=datetime(2023, 5, 1))
+            start_date='2023-05-01T00:00:00+00:00')
         aux = CourseOverview.get_from_id(self.course3.id)
         with patch('common.djangoapps.student.models.cc.User.save'):
             # staff user
@@ -433,32 +433,54 @@ class TestCourseClassification(ModuleStoreTestCase):
         cc.save()
         cc2 = CourseClassification.objects.create(course_id=self.course2.id, MainClass=mcc2)
         cc2.save()
-        response = helpers.set_data_courses([{'_id':str(self.course.id)},{'_id':str(self.course2.id)},{'_id':str(self.course3.id)}])
+        today = timezone.now()
+        response = helpers.set_data_courses([{'_id':str(self.course.id),'data': {
+                        'id': str(self.course.id),
+                        'start': str(self.course.start_date)
+                    }},{'_id':str(self.course2.id),'data': {
+                        'id': str(self.course2.id),
+                        'start': str(self.course2.start_date)
+                    }},{'_id':str(self.course3.id),'data': {
+                        'id': str(self.course3.id),
+                        'start': str(self.course3.start_date)
+                    }}])
         expected = [
-            {'_id':str(self.course.id), 'extra_data':{
+            {'id':str(self.course.id), 'start': str(self.course.start_date),
+             'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course.start_date)), today),
+             'course_state': 'ongoing_enrollable',
+             'extra_data':{
                                             'short_description' : None, 
                                             'advertised_start' : None, 
                                             'display_org_with_default' : 'mss',
+                                            'invitation_only': False,
                                             'main_classification':{
                                                 'name':mcc1.name, 
                                                 'logo':mcc1.logo.url 
                                             }
                                         }
                                     },
-            {'_id':str(self.course2.id), 'extra_data':{
+            {'id':str(self.course2.id), 'start': str(self.course2.start_date),
+             'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course2.start_date)), today),
+             'course_state': 'ongoing_enrollable',
+             'extra_data':{
                                             'short_description' : None, 
                                             'advertised_start' : None, 
                                             'display_org_with_default' : 'mss',
+                                            'invitation_only': False,
                                             'main_classification':{
                                                 'name':mcc2.name, 
                                                 'logo':''
                                             }
                                         }
                                     },
-            {'_id':str(self.course3.id), 'extra_data':{
+            {'id':str(self.course3.id),'start': str(self.course3.start_date), 
+             'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course3.start_date)), today),
+             'course_state': 'ongoing_enrollable',
+             'extra_data':{
                                             'short_description' : None, 
                                             'advertised_start' : None, 
                                             'display_org_with_default' : 'mss',
+                                            'invitation_only': False,
                                             'main_classification':{}
                                         }
                                     },
@@ -467,7 +489,7 @@ class TestCourseClassification(ModuleStoreTestCase):
 
     def test_set_data_courses_no_courses(self):
         """
-            test set data courses when course id from elasticsearch doesnt exists in course overviews
+            test set data courses when course id from elasticsearch doesn't exists in course overviews
         """
         mcc1 = MainCourseClassification(
             name="MCC1",
@@ -486,19 +508,31 @@ class TestCourseClassification(ModuleStoreTestCase):
         mcc1.save()
         cc = CourseClassification.objects.create(course_id=self.course.id, MainClass=mcc1)
         cc.save()
-        response = helpers.set_data_courses([{'_id':str(self.course.id)},{'_id':'course-v1:eol+Test+2023'},])
+        response = helpers.set_data_courses([{'_id':str(self.course.id),'data': {
+                        'id': str(self.course.id),
+                        'start':  str(self.course.start_date)
+                    }},{'_id':'course-v1:eol+Test+2023','data': {
+                        'id':'course-v1:eol+Test+2023','start':  str(self.course.start_date)}
+                        },])
+        today = timezone.now()
         expected = [
-            {'_id':str(self.course.id), 'extra_data':{
-                                            'short_description' : None, 
-                                            'advertised_start' : None, 
-                                            'display_org_with_default' : 'mss',
-                                            'main_classification':{
-                                                'name':mcc1.name, 
-                                                'logo':mcc1.logo.url 
-                                            }
-                                        }
-                                    },
-            {'_id':'course-v1:eol+Test+2023', 'extra_data':{'main_classification':{}}},
+            {'id':str(self.course.id),'start':  str(self.course.start_date),
+            'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course.start_date)), today),
+            'course_state': 'ongoing_enrollable',
+            'extra_data':{
+                'short_description' : None, 
+                'advertised_start' : None, 
+                'display_org_with_default' : 'mss',
+                'invitation_only': False,
+                'main_classification':{
+                    'name':mcc1.name, 
+                    'logo':mcc1.logo.url 
+                }
+            }},
+            {'id':'course-v1:eol+Test+2023','start':  str(self.course.start_date),
+            'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course.start_date)), today),
+            'course_state': 'ongoing_enrollable',
+            'extra_data':{'main_classification':{}}},
             ]
         self.assertEqual(response, expected)
 
