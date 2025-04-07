@@ -29,15 +29,23 @@
             <div class="course-border"></div>
         </div>
         <section class="highlighted-courses" style="padding-top: 25px;">
-            <ul class="courses-list">
-                %for course in courses:
-                    %if course.catalog_visibility == 'both':
-                        <li class="mb-3">
-                            <%include file="../course.html" args="course=course, main_class={}" />
-                        </li>
-                    %endif
-                %endfor
-            </ul>
+            <div>
+            <% displayed_courses = 0 %>
+            %for index, course in enumerate(courses):
+                %if displayed_courses %4 == 0:
+                    <div class="row">
+                %endif
+                %if course.catalog_visibility == 'both':   
+                    <%  displayed_courses = displayed_courses +1 %>
+                    <div class="col-md-3 col-sm-12 p-2">
+                        <%include file="../course.html" args="course=course, main_class={}" />
+                    </div>
+                %endif
+                %if displayed_courses %4 == 0:
+                    </div>
+                %endif
+            %endfor
+        </div>
         </section>
     </section>
     %endif
