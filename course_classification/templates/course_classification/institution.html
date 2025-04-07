@@ -12,7 +12,7 @@
 <%namespace name='static' file='../static_content.html'/>
 <%block name="pagetitle">${institution_name}</%block>
 <link rel="stylesheet" type="text/css" href="${static.url('course_classification/css/main.css')}"/> 
-<main id="main" class="open-institutions" aria-label="Content" tabindex="-1">
+<main id="main" class="open-institutions mb-5" aria-label="Content" tabindex="-1">
     <section class="container-fluid px-0 open-institutions-banner">
         <div class="container-center">
           <img src="${institution_banner}" class="mx-auto openuchile-header d-block">
@@ -28,16 +28,21 @@
             <h2 class="course-tittle-institution">${_("Courses").upper()}</h2>
             <div class="course-border"></div>
         </div>
-        <section class="highlighted-courses" style="padding-top: 25px;">
-            <ul class="courses-list">
-                %for course in courses:
-                    %if course.catalog_visibility == 'both':
-                        <li class="mb-3">
-                            <%include file="../course.html" args="course=course, main_class={}" />
-                        </li>
-                    %endif
-                %endfor
-            </ul>
+        <section class="courses-list" style="padding-top: 25px;">
+
+             <% displayed_courses = 0 %>
+            %for course in courses:
+                %if displayed_courses %4 == 0:
+                    <div class="row">
+                %endif
+                <%  displayed_courses = displayed_courses +1 %>
+                <div class="col-md-3 col-sm-12 p-2">
+                    <%include file="../course.html" args="course=course" />
+                </div>
+                %if displayed_courses %4 == 0:
+                    </div>
+                %endif
+            %endfor
         </section>
     </section>
     %endif
