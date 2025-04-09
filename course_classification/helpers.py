@@ -1,48 +1,85 @@
 # -*- coding:utf-8 -*-
-from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
-from django.db.models import Q
-from django.urls import reverse
-from collections import OrderedDict
-from opaque_keys.edx.keys import CourseKey
-from opaque_keys import InvalidKeyError
-from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 import logging
-log = logging.getLogger(__name__)
+import math
 
+from collections import OrderedDict
+
+from django.urls import reverse
+from django.utils import timezone
+
+from opaque_keys.edx.keys import CourseKey
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+
+from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
+
+log = logging.getLogger(__name__)
+    
+def sort_key(course, today, key='start'):
+    date = getattr(course, key, None)
+    if date:
+        return abs((date - today).days)
+    else:
+        return float('inf')
+
+def set_time_left(course_start,today):
+    days_left = (course_start - today).days
+    year = math.trunc(days_left/365)
+    month = math.trunc(days_left/30)
+    if(year>0):
+        time_left = [year,'y']
+    elif(month>0 and month<=12):
+        time_left = [month,'m']
+    elif(days_left<=31):
+        time_left = [days_left,'d']
+    return time_left
+    
 def get_course_ctgs(courses):
     """
-        Return dict with categories and its courses
+    Return dict with categories and its courses, sorted by enrollment and date criteria.
     """
-    ret_courses = OrderedDict()
-    ret_courses['featured'] = []
+    ctg_courses = OrderedDict()
     mc_courses= {}
+    today = timezone.now()  # Get timezone-aware current datetime
+    featured_courses = []
     if CourseClassification.objects.filter(is_featured_course=True).exists():
         for course in courses:
             try:
                 course_class = CourseClassification.objects.get(course_id=course.id)
+                course_start = getattr(course, 'start', None)
+                setattr(course, 'time_left', set_time_left(course_start, today))
                 if course_class.is_featured_course:
-                    ret_courses['featured'].append(course)
-                    if course_class.MainClass:
-                        mc_courses[course.id] = {'name': course_class.MainClass.name, 'logo': course_class.MainClass.logo}
+                    featured_courses.append(course)
+                if course_class.MainClass:
+                    mc_courses[course.id] = {'name': course_class.MainClass.name,'logo': course_class.MainClass.logo}
             except CourseClassification.DoesNotExist:
                 pass
-        if ret_courses['featured']:
-            return ret_courses, mc_courses
-    del ret_courses['featured']
+    if len(featured_courses) > 0:
+        # Apply classification and sorting to featured courses
+        ctg_courses['featured'] = classify_and_sort_courses(featured_courses, today)
+        # Early return to match original behavior
+        return ctg_courses, mc_courses
 
-    for main in CourseCategory.objects.all().order_by('sequence'):
-        ret_courses[main.id] = {'id':main.id,'name':main.name, 'seq':main.sequence,'show_opt':main.show_opt, 'courses':[]}
-    mc_courses= {}
-    for course in courses:
-        try:
-            course_class = CourseClassification.objects.get(course_id=course.id)
-            if course_class.MainClass:
-                mc_courses[course.id] = {'name': course_class.MainClass.name, 'logo': course_class.MainClass.logo}
-            for ctg in course_class.course_category.all():
-                ret_courses[ctg.id]['courses'].append(course)
-        except CourseClassification.DoesNotExist:
-            pass
-    return ret_courses, mc_courses
+    # If no featured courses, proceed to build categories
+    categories = CourseCategory.objects.all().order_by('sequence')
+    if categories.exists():
+        for ctg in categories:
+            ctg_courses[ctg.id] = {'id':ctg.id,'name':ctg.name, 'seq':ctg.sequence,'show_opt':ctg.show_opt, 'courses':[]}
+        # Collect courses into categories
+        for course in courses:
+            try:
+                course_class = CourseClassification.objects.get(course_id=course.id)
+                course_start = getattr(course, 'start', None)
+                setattr(course, 'time_left', set_time_left(course_start, today))
+                if course_class.MainClass:
+                    mc_courses[course.id] = {'name': course_class.MainClass.name, 'logo': course_class.MainClass.logo}
+                for ctg in course_class.course_category.all():
+                    ctg_courses[ctg.id]['courses'].append(course)
+            except CourseClassification.DoesNotExist:
+                pass
+    else:
+        # If no categories are found and no featured courses, ctg_courses remains empty
+        ctg_courses = OrderedDict()
+    return ctg_courses, mc_courses
 
 def get_featured_courses():
     """
@@ -137,3 +174,84 @@ def set_data_courses(courses):
         course['extra_data']['main_classification'] = main_classifications.get(course['_id'], {})
         new_data.append(course)
     return new_data
+
+def classify_and_sort_courses(courses, today):
+    """
+    Classify and sort courses based on their state and proximity to the current date.
+    """
+    # Next variables are made by course state and enrollment state
+    ongoing_enrollable_courses = []
+    upcoming_enrollable_courses = []
+    upcoming_notenrollable_courses = []
+    ongoing_notenrollable_courses = []
+    # Course completed
+    completed_courses = []
+
+    for course in courses:
+        course_start = getattr(course, 'start', None)
+        course_end = getattr(course, 'end', None)
+        enroll_start = getattr(course, 'enrollment_start', course_start)
+        enroll_end = getattr(course, 'enrollment_end', course_end)
+        is_invitation_only = getattr(course, 'invitation_only', False)
+
+        # Ensure that enroll_start and enroll_end are not None before comparisons
+        # If enroll_start is None, set it to course_start
+        if enroll_start is None:
+            enroll_start = course_start
+        # If enroll_end is None, set it to course_end or a future date
+        if enroll_end is None:
+            enroll_end = course_end if course_end else today.replace(year=today.year + 100)
+
+        # If has enrollment only by invitation
+        if is_invitation_only:
+            # If course is'nt started yet
+            if course_start > today:
+                course.course_state = 'upcoming_notenrollable'
+                upcoming_notenrollable_courses.append(course)
+            # course already start
+            else:
+                course.course_state = 'ongoing_notenrollable'
+                ongoing_notenrollable_courses.append(course)
+        # If today is between enrollment range and the course already started 
+        elif enroll_start <= today and (not enroll_end or enroll_end > today) and course_start <= today and (not course_end or course_end > today):
+            course.course_state = 'ongoing_enrollable'
+            ongoing_enrollable_courses.append(course)
+        # If you are not within the registration deadline today and the course has already begun
+        elif enroll_start < today and (not enroll_end or enroll_end < today) and course_start <= today and (not course_end or course_end > today):
+            course.course_state = 'ongoing_notenrollable'
+            ongoing_notenrollable_courses.append(course)
+        # If you are not within the registration deadline today and the course has not yet started
+        elif enroll_start < today and (enroll_end < today) and course_start > today and (not course_end or course_end > today):
+            course.course_state = 'upcoming_notenrollable'
+            upcoming_enrollable_courses.append(course)
+        # If you are within the enrollment range today and the course has not yet started
+        elif enroll_start <= today and (not enroll_end or enroll_end > today) and course_start > today:
+            course.course_state = 'upcoming_enrollable'
+            upcoming_enrollable_courses.append(course)
+        # If you are not within the enrollment range today and the course has not yet started
+        elif enroll_start > today and (not enroll_end or enroll_end > today) and course_start > today:
+            course.course_state = 'upcoming_notenrollable'
+            upcoming_notenrollable_courses.append(course)
+        # If today is after the end date of the course
+        elif course_end and course_end <= today:
+            course.course_state = 'completed'
+            completed_courses.append(course)
+        else:
+            course.course_state = 'other'
+            completed_courses.append(course)
+
+    ongoing_enrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
+    upcoming_enrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
+    upcoming_notenrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
+    ongoing_notenrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
+    completed_courses.sort(key=lambda course: sort_key(course, today, key='end'))
+
+    # Combine the lists
+    sorted_courses = (
+        ongoing_enrollable_courses +
+        upcoming_enrollable_courses +
+        upcoming_notenrollable_courses +
+        ongoing_notenrollable_courses +
+        completed_courses
+    )
+    return sorted_courses
