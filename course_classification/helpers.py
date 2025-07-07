@@ -13,6 +13,9 @@ import math
 log = logging.getLogger(__name__)
     
 def sort_key(course, today, key='start'):
+    """
+    Allows you to obtain a number with the  absolute value between a date and today or an infinite positive number
+    """
     date = getattr(course, key, None)
     if date:
         return abs((date - today).days)
@@ -20,6 +23,9 @@ def sort_key(course, today, key='start'):
         return float('inf')
 
 def set_time_left(course_start,today):
+    """
+    Allows you to obtain how much time are left until a course start, can be in days, months or years
+    """
     days_left = (course_start - today).days
     year = math.trunc(days_left/365)
     month = math.trunc(days_left/30)
@@ -177,7 +183,7 @@ def classify_and_sort_courses_dict(courses, today):
     upcoming_enrollable_courses = []
     upcoming_notenrollable_courses = []
     ongoing_notenrollable_courses = []
-    # Course completed
+    # Completed courses
     completed_courses = []
 
     for course in courses:
@@ -199,9 +205,9 @@ def classify_and_sort_courses_dict(courses, today):
         # If enroll_end is None, set it to course_end or a future date
         if enroll_end is None:
             enroll_end =  course_end if course_end else today.replace(year=today.year + 100)
-        # If has enrollment only by invitation
+        # If the course enrollment is by invitation
         if is_invitation_only:
-            # If course is'nt started yet
+            # If course hasn't started yet
             if course_start > today:
                 course["course_state"] = 'upcoming_notenrollable'
                 upcoming_notenrollable_courses.append(course)
