@@ -1,15 +1,21 @@
 # -*- coding:utf-8 -*-
-from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
-from django.db.models import Q
-from django.urls import reverse
+# Python Standard Libraries
 from collections import OrderedDict
-from opaque_keys.edx.keys import CourseKey
-from opaque_keys import InvalidKeyError
-from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
-import logging
-from django.utils import timezone
 from datetime import datetime
+import logging
 import math
+
+# Installed packages (via pip)
+from django.urls import reverse
+from django.utils import timezone
+
+# Edx dependencies
+from opaque_keys.edx.keys import CourseKey
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+
+# Internal project dependencies
+from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
+
 log = logging.getLogger(__name__)
     
 def sort_key(course, today, key='start'):

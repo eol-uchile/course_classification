@@ -1,5 +1,7 @@
+# Installed packages (via pip)
 from django.conf.urls import url
 
+# Internal project dependencies
 from .views import CourseClassificationView, course_discovery_eol
 
 urlpatterns = (

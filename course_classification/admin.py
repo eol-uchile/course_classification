@@ -1,13 +1,8 @@
 # -*- coding:utf-8 -*-
+# Installed packages (via pip)
 from django.contrib import admin
-from django import forms
-from xmodule.modulestore.django import modulestore
-from opaque_keys import InvalidKeyError
-from opaque_keys.edx.keys import CourseKey
-from django.core.exceptions import ValidationError
-from opaque_keys.edx.locations import SlashSeparatedCourseKey
-from django.core.validators import URLValidator
 
+# Internal project dependencies
 from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
 
 class MainCourseClassificationAdmin(admin.ModelAdmin):

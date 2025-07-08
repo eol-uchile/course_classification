@@ -1,29 +1,26 @@
 #!/usr/bin/env python
 # -- coding: utf-8 --
 
-from django.conf import settings
-from django.contrib.auth.models import User
-from django.http import HttpResponseRedirect, HttpResponseForbidden, Http404
-from django.shortcuts import render
-from django.urls import reverse
-from django.views.generic.base import View
-from django.http import HttpResponse
-from opaque_keys.edx.keys import CourseKey
-from opaque_keys import InvalidKeyError
-from common.djangoapps.util.json_request import JsonResponse, JsonResponseBadRequest
-from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
-from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate
-import json
-import requests
+# Python Standard Libraries
 import logging
 
+# Installed packages (via pip)
+from django.http import HttpResponseRedirect
+from django.shortcuts import render
 from django.utils.translation import ugettext as _
 from django.views.decorators.http import require_POST
-
+from django.views.generic.base import View
 from eventtracking import tracker as track
-import six
 from search.views import _process_pagination_values
+import six
+
+# Edx dependencies
+from common.djangoapps.util.json_request import JsonResponse
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+
+# Internal project dependencies
 from .api import *
+from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate
 
 logger = logging.getLogger(__name__)
 
