@@ -2,14 +2,23 @@
 # -*- coding: utf-8 -*-
 # Python Standard Libraries
 from datetime import datetime
+import copy
+import json
 import urllib.parse
 
 # Installed packages (via pip)
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.http import HttpResponseRedirect
 from django.test import Client
+from django.test.utils import override_settings
 from django.urls import reverse
 from django.utils import timezone
-from mock import patch
+from elasticsearch import Elasticsearch
+from mock import patch, MagicMock
+from search.api import NoSearchEngineError
+from search.elastic import ElasticSearchEngine
+from search.tests.utils import SearcherMixin, TEST_INDEX_NAME
 
 # Edx dependencies
 from common.djangoapps.student.tests.factories import UserFactory, CourseEnrollmentFactory
@@ -20,6 +29,18 @@ from xmodule.modulestore.tests.factories import CourseFactory
 # Internal project dependencies
 from . import helpers
 from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
+from .views import CourseClassificationView, course_discovery_eol
+from .api import course_discovery_search_eol
+class TestRequest(object):
+    # pylint: disable=too-few-public-methods
+    """
+    Module helper for @json_handler
+    """
+    method = None
+    body = None
+    success = None
+    COOKIES = {}
+    POST = {}
 
 class TestCourseClassification(ModuleStoreTestCase):
     def setUp(self):
@@ -637,3 +658,132 @@ class TestCourseClassification(ModuleStoreTestCase):
         request = urllib.parse.urlparse(result.url)
         self.assertEqual(result.status_code, 302)
         self.assertEqual(request.path, '/')
+
+    def test_redirect_when_banner_empty(self):
+        """ Check if redirect properly when banner is empty"""
+        mock_classification = MagicMock()
+        mock_classification.banner = ""
+        with patch('course_classification.views.MainCourseClassification') as mock_classification_model:
+            mock_classification_model.objects.get.return_value = mock_classification
+            request = TestRequest()
+            request.method = 'POST'
+            request.COOKIES['openedx-language-preference'] = 'en'
+            response = CourseClassificationView().get(request, org_id=1)
+            self.assertIsInstance(response, HttpResponseRedirect)
+            self.assertEqual(response.url, '/')
+
+class DemoCourse:
+    """ Class for dispensing demo courses """
+    DEMO_COURSE_ID = "edX/DemoX/Demo_Course"
+    DEMO_COURSE = {
+        "start": datetime(2014, 2, 1),
+        "number": "DemoX",
+        "content": {
+            "short_description": "Short description",
+            "overview": "Long overview page",
+            "display_name": "edX Demonstration Course",
+            "number": "DemoX"
+        },
+        "course": "edX/DemoX/Demo_Course",
+        "image_url": "/c4x/edX/DemoX/asset/images_course_image.jpg",
+        "effort": "5:30",
+        "id": DEMO_COURSE_ID,
+        "enrollment_start": datetime(2014, 1, 1),
+    }
+
+    demo_course_count = 0
+
+    @classmethod
+    def get(cls, update_dict=None, remove_fields=None):
+        """ get a new demo course """
+        cls.demo_course_count += 1
+        course_copy = copy.deepcopy(cls.DEMO_COURSE)
+        if update_dict:
+            if "content" in update_dict:
+                course_copy["content"].update(update_dict["content"])
+                del update_dict["content"]
+            course_copy.update(update_dict)
+        course_copy.update({"id": "{}_{}".format(course_copy["id"], cls.demo_course_count)})
+        if remove_fields:
+            for remove_field in remove_fields:
+                if remove_field in course_copy:
+                    del course_copy[remove_field]
+        return course_copy
+
+    @classmethod
+    def reset_count(cls):
+        """ go back to zero """
+        cls.demo_course_count = 0
+
+    @staticmethod
+    def index(searcher, course_info):
+        """ Adds course info dictionary to the index """
+        searcher.index(doc_type="course_info", sources=course_info)
+
+    @classmethod
+    def get_and_index(cls, searcher, update_dict=None, remove_fields=None):
+        """ Adds course info dictionary to the index """
+        cls.index(searcher, [cls.get(update_dict, remove_fields)])
+
+
+@override_settings(ELASTIC_FIELD_MAPPINGS={
+    "start_date": {"type": "date"},
+    "enrollment_start": {"type": "date"},
+    "enrollment_end": {"type": "date"}
+})
+@override_settings(MOCK_SEARCH_BACKING_FILE=None)
+@override_settings(COURSEWARE_INDEX_NAME=TEST_INDEX_NAME)
+# Any class that inherits from TestCase will cause too-many-public-methods pylint error
+class TestMockCourseDiscoverySearch(ModuleStoreTestCase, SearcherMixin):  # pylint: disable=too-many-public-methods
+    """
+    Tests course discovery activities
+    """
+
+    @property
+    def _is_elastic(self):
+        """ check search engine implementation, to manage cleanup differently """
+        return isinstance(self.searcher, ElasticSearchEngine)
+
+    def setUp(self):
+        super(TestMockCourseDiscoverySearch, self).setUp()
+        DemoCourse.reset_count()
+        self._searcher = None
+        course = {
+            'org':'orgA',
+            'course':'999',
+            'display_name':'2020',
+            'catalog_visibility':"both",
+            'emit_signals':True,
+            'start':'2023-03-01T00:00:00+00:00'
+            }
+        DemoCourse.get_and_index(self.searcher, course)
+        DemoCourse.get_and_index(self.searcher, {"enrollment_start": None})
+        DemoCourse.get_and_index(self.searcher, {"enrollment_start": datetime(2114, 1, 1)})
+
+    def test_course_list(self):
+        """ No arguments to course_discovery_search should show all available courses"""
+        results = course_discovery_search_eol()
+        self.assertEqual(results["total"],3)
+    
+    def test_searcher_is_none(self):
+        """ Check if searcher is None ans it raises an error """
+        with patch('search.api.SearchEngine.get_search_engine', return_value=None):
+            with self.assertRaises(NoSearchEngineError):
+                course_discovery_search_eol()
+
+    def test_course_discovery_eol(self):
+        """Check if course_discovery_eol works properly """
+        request = TestRequest()
+        request.method = 'POST'
+        request.POST = {
+            'search_string': '',
+            'order_by': '',
+            'year': '',
+            'state': '',
+            'classification': '',
+            'page_size': '20',
+            'page_index': '0'
+        }
+        response = course_discovery_eol(request)
+        response = json.loads(response.content.decode('utf-8'))
+        self.assertEqual(response["total"],3)
