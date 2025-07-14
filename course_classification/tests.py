@@ -1,27 +1,47 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from mock import patch, Mock, MagicMock
-from collections import namedtuple
-from django.urls import reverse
-from django.test import TestCase, Client
-from django.conf import settings
-from django.contrib.auth.models import Permission, User
-from django.contrib.contenttypes.models import ContentType
-from urllib.parse import parse_qs
-import urllib.parse
-from opaque_keys.edx.locator import CourseLocator
-from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
-from xmodule.modulestore import ModuleStoreEnum
-from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
-from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
-from common.djangoapps.student.tests.factories import CourseEnrollmentAllowedFactory, UserFactory, CourseEnrollmentFactory
-import json
-from . import helpers
-from .views import CourseClassificationView
-from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
-from django.core.files.uploadedfile import SimpleUploadedFile
+# Python Standard Libraries
 from datetime import datetime
-  
+import copy
+import json
+import urllib.parse
+
+# Installed packages (via pip)
+from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.http import HttpResponseRedirect
+from django.test import Client
+from django.test.utils import override_settings
+from django.urls import reverse
+from django.utils import timezone
+from elasticsearch import Elasticsearch
+from mock import patch, MagicMock
+from search.api import NoSearchEngineError
+from search.elastic import ElasticSearchEngine
+from search.tests.utils import SearcherMixin, TEST_INDEX_NAME
+
+# Edx dependencies
+from common.djangoapps.student.tests.factories import UserFactory, CourseEnrollmentFactory
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
+from xmodule.modulestore.tests.factories import CourseFactory
+
+# Internal project dependencies
+from . import helpers
+from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
+from .views import CourseClassificationView, course_discovery_eol
+from .api import course_discovery_search_eol
+class TestRequest(object):
+    # pylint: disable=too-few-public-methods
+    """
+    Module helper for @json_handler
+    """
+    method = None
+    body = None
+    success = None
+    COOKIES = {}
+    POST = {}
+
 class TestCourseClassification(ModuleStoreTestCase):
     def setUp(self):
         super(TestCourseClassification, self).setUp()
@@ -31,7 +51,7 @@ class TestCourseClassification(ModuleStoreTestCase):
             display_name='2020',
             catalog_visibility="both",
             emit_signals=True,
-            start_date=datetime(2023, 1, 1))
+            start_date='2023-03-01T00:00:00+00:00')
         aux = CourseOverview.get_from_id(self.course.id)
         self.course2 = CourseFactory.create(
             org='mss',
@@ -39,7 +59,7 @@ class TestCourseClassification(ModuleStoreTestCase):
             display_name='2021',
             catalog_visibility="both",
             emit_signals=True,
-            start_date=datetime(2023, 2, 1))
+            start_date='2023-02-01T00:00:00+00:00')
         aux = CourseOverview.get_from_id(self.course2.id)
         self.course3 = CourseFactory.create(
             org='mss',
@@ -47,7 +67,7 @@ class TestCourseClassification(ModuleStoreTestCase):
             display_name='2021',
             catalog_visibility="none",
             emit_signals=True,
-            start_date=datetime(2023, 5, 1))
+            start_date='2023-05-01T00:00:00+00:00')
         aux = CourseOverview.get_from_id(self.course3.id)
         with patch('common.djangoapps.student.models.cc.User.save'):
             # staff user
@@ -433,32 +453,54 @@ class TestCourseClassification(ModuleStoreTestCase):
         cc.save()
         cc2 = CourseClassification.objects.create(course_id=self.course2.id, MainClass=mcc2)
         cc2.save()
-        response = helpers.set_data_courses([{'_id':str(self.course.id)},{'_id':str(self.course2.id)},{'_id':str(self.course3.id)}])
+        today = timezone.now()
+        response = helpers.set_data_courses([{'_id':str(self.course.id),'data': {
+                        'id': str(self.course.id),
+                        'start': str(self.course.start_date)
+                    }},{'_id':str(self.course2.id),'data': {
+                        'id': str(self.course2.id),
+                        'start': str(self.course2.start_date)
+                    }},{'_id':str(self.course3.id),'data': {
+                        'id': str(self.course3.id),
+                        'start': str(self.course3.start_date)
+                    }}])
         expected = [
-            {'_id':str(self.course.id), 'extra_data':{
+            {'id':str(self.course.id), 'start': str(self.course.start_date),
+             'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course.start_date)), today),
+             'course_state': 'ongoing_enrollable',
+             'extra_data':{
                                             'short_description' : None, 
                                             'advertised_start' : None, 
                                             'display_org_with_default' : 'mss',
+                                            'invitation_only': False,
                                             'main_classification':{
                                                 'name':mcc1.name, 
                                                 'logo':mcc1.logo.url 
                                             }
                                         }
                                     },
-            {'_id':str(self.course2.id), 'extra_data':{
+            {'id':str(self.course2.id), 'start': str(self.course2.start_date),
+             'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course2.start_date)), today),
+             'course_state': 'ongoing_enrollable',
+             'extra_data':{
                                             'short_description' : None, 
                                             'advertised_start' : None, 
                                             'display_org_with_default' : 'mss',
+                                            'invitation_only': False,
                                             'main_classification':{
                                                 'name':mcc2.name, 
                                                 'logo':''
                                             }
                                         }
                                     },
-            {'_id':str(self.course3.id), 'extra_data':{
+            {'id':str(self.course3.id),'start': str(self.course3.start_date), 
+             'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course3.start_date)), today),
+             'course_state': 'ongoing_enrollable',
+             'extra_data':{
                                             'short_description' : None, 
                                             'advertised_start' : None, 
                                             'display_org_with_default' : 'mss',
+                                            'invitation_only': False,
                                             'main_classification':{}
                                         }
                                     },
@@ -467,7 +509,7 @@ class TestCourseClassification(ModuleStoreTestCase):
 
     def test_set_data_courses_no_courses(self):
         """
-            test set data courses when course id from elasticsearch doesnt exists in course overviews
+            test set data courses when course id from elasticsearch doesn't exists in course overviews
         """
         mcc1 = MainCourseClassification(
             name="MCC1",
@@ -486,19 +528,31 @@ class TestCourseClassification(ModuleStoreTestCase):
         mcc1.save()
         cc = CourseClassification.objects.create(course_id=self.course.id, MainClass=mcc1)
         cc.save()
-        response = helpers.set_data_courses([{'_id':str(self.course.id)},{'_id':'course-v1:eol+Test+2023'},])
+        response = helpers.set_data_courses([{'_id':str(self.course.id),'data': {
+                        'id': str(self.course.id),
+                        'start':  str(self.course.start_date)
+                    }},{'_id':'course-v1:eol+Test+2023','data': {
+                        'id':'course-v1:eol+Test+2023','start':  str(self.course.start_date)}
+                        },])
+        today = timezone.now()
         expected = [
-            {'_id':str(self.course.id), 'extra_data':{
-                                            'short_description' : None, 
-                                            'advertised_start' : None, 
-                                            'display_org_with_default' : 'mss',
-                                            'main_classification':{
-                                                'name':mcc1.name, 
-                                                'logo':mcc1.logo.url 
-                                            }
-                                        }
-                                    },
-            {'_id':'course-v1:eol+Test+2023', 'extra_data':{'main_classification':{}}},
+            {'id':str(self.course.id),'start':  str(self.course.start_date),
+            'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course.start_date)), today),
+            'course_state': 'ongoing_enrollable',
+            'extra_data':{
+                'short_description' : None, 
+                'advertised_start' : None, 
+                'display_org_with_default' : 'mss',
+                'invitation_only': False,
+                'main_classification':{
+                    'name':mcc1.name, 
+                    'logo':mcc1.logo.url 
+                }
+            }},
+            {'id':'course-v1:eol+Test+2023','start':  str(self.course.start_date),
+            'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course.start_date)), today),
+            'course_state': 'ongoing_enrollable',
+            'extra_data':{'main_classification':{}}},
             ]
         self.assertEqual(response, expected)
 
@@ -604,3 +658,132 @@ class TestCourseClassification(ModuleStoreTestCase):
         request = urllib.parse.urlparse(result.url)
         self.assertEqual(result.status_code, 302)
         self.assertEqual(request.path, '/')
+
+    def test_redirect_when_banner_empty(self):
+        """ Check if redirect properly when banner is empty"""
+        mock_classification = MagicMock()
+        mock_classification.banner = ""
+        with patch('course_classification.views.MainCourseClassification') as mock_classification_model:
+            mock_classification_model.objects.get.return_value = mock_classification
+            request = TestRequest()
+            request.method = 'POST'
+            request.COOKIES['openedx-language-preference'] = 'en'
+            response = CourseClassificationView().get(request, org_id=1)
+            self.assertIsInstance(response, HttpResponseRedirect)
+            self.assertEqual(response.url, '/')
+
+class DemoCourse:
+    """ Class for dispensing demo courses """
+    DEMO_COURSE_ID = "edX/DemoX/Demo_Course"
+    DEMO_COURSE = {
+        "start": datetime(2014, 2, 1),
+        "number": "DemoX",
+        "content": {
+            "short_description": "Short description",
+            "overview": "Long overview page",
+            "display_name": "edX Demonstration Course",
+            "number": "DemoX"
+        },
+        "course": "edX/DemoX/Demo_Course",
+        "image_url": "/c4x/edX/DemoX/asset/images_course_image.jpg",
+        "effort": "5:30",
+        "id": DEMO_COURSE_ID,
+        "enrollment_start": datetime(2014, 1, 1),
+    }
+
+    demo_course_count = 0
+
+    @classmethod
+    def get(cls, update_dict=None, remove_fields=None):
+        """ get a new demo course """
+        cls.demo_course_count += 1
+        course_copy = copy.deepcopy(cls.DEMO_COURSE)
+        if update_dict:
+            if "content" in update_dict:
+                course_copy["content"].update(update_dict["content"])
+                del update_dict["content"]
+            course_copy.update(update_dict)
+        course_copy.update({"id": "{}_{}".format(course_copy["id"], cls.demo_course_count)})
+        if remove_fields:
+            for remove_field in remove_fields:
+                if remove_field in course_copy:
+                    del course_copy[remove_field]
+        return course_copy
+
+    @classmethod
+    def reset_count(cls):
+        """ go back to zero """
+        cls.demo_course_count = 0
+
+    @staticmethod
+    def index(searcher, course_info):
+        """ Adds course info dictionary to the index """
+        searcher.index(doc_type="course_info", sources=course_info)
+
+    @classmethod
+    def get_and_index(cls, searcher, update_dict=None, remove_fields=None):
+        """ Adds course info dictionary to the index """
+        cls.index(searcher, [cls.get(update_dict, remove_fields)])
+
+
+@override_settings(ELASTIC_FIELD_MAPPINGS={
+    "start_date": {"type": "date"},
+    "enrollment_start": {"type": "date"},
+    "enrollment_end": {"type": "date"}
+})
+@override_settings(MOCK_SEARCH_BACKING_FILE=None)
+@override_settings(COURSEWARE_INDEX_NAME=TEST_INDEX_NAME)
+# Any class that inherits from TestCase will cause too-many-public-methods pylint error
+class TestMockCourseDiscoverySearch(ModuleStoreTestCase, SearcherMixin):  # pylint: disable=too-many-public-methods
+    """
+    Tests course discovery activities
+    """
+
+    @property
+    def _is_elastic(self):
+        """ check search engine implementation, to manage cleanup differently """
+        return isinstance(self.searcher, ElasticSearchEngine)
+
+    def setUp(self):
+        super(TestMockCourseDiscoverySearch, self).setUp()
+        DemoCourse.reset_count()
+        self._searcher = None
+        course = {
+            'org':'orgA',
+            'course':'999',
+            'display_name':'2020',
+            'catalog_visibility':"both",
+            'emit_signals':True,
+            'start':'2023-03-01T00:00:00+00:00'
+            }
+        DemoCourse.get_and_index(self.searcher, course)
+        DemoCourse.get_and_index(self.searcher, {"enrollment_start": None})
+        DemoCourse.get_and_index(self.searcher, {"enrollment_start": datetime(2114, 1, 1)})
+
+    def test_course_list(self):
+        """ No arguments to course_discovery_search should show all available courses"""
+        results = course_discovery_search_eol()
+        self.assertEqual(results["total"],3)
+    
+    def test_searcher_is_none(self):
+        """ Check if searcher is None ans it raises an error """
+        with patch('search.api.SearchEngine.get_search_engine', return_value=None):
+            with self.assertRaises(NoSearchEngineError):
+                course_discovery_search_eol()
+
+    def test_course_discovery_eol(self):
+        """Check if course_discovery_eol works properly """
+        request = TestRequest()
+        request.method = 'POST'
+        request.POST = {
+            'search_string': '',
+            'order_by': '',
+            'year': '',
+            'state': '',
+            'classification': '',
+            'page_size': '20',
+            'page_index': '0'
+        }
+        response = course_discovery_eol(request)
+        response = json.loads(response.content.decode('utf-8'))
+        self.assertEqual(response["total"],3)

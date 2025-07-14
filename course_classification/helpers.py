@@ -1,13 +1,48 @@
 # -*- coding:utf-8 -*-
-from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
-from django.db.models import Q
-from django.urls import reverse
+# Python Standard Libraries
 from collections import OrderedDict
-from opaque_keys.edx.keys import CourseKey
-from opaque_keys import InvalidKeyError
-from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from datetime import datetime
 import logging
+import math
+
+# Installed packages (via pip)
+from django.urls import reverse
+from django.utils import timezone
+
+# Edx dependencies
+from opaque_keys.edx.keys import CourseKey
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+
+# Internal project dependencies
+from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
+
 log = logging.getLogger(__name__)
+    
+def sort_key(course, today, key='start'):
+    """
+    Allows you to obtain a number with the  absolute value between a date and today or an infinite positive number
+    """
+    date = getattr(course, key, None)
+    if date:
+        return abs((date - today).days)
+    else:
+        return float('inf')
+
+def set_time_left(course_start,today):
+    """
+    Allows you to obtain how much time are left until a course start, can be in days, months or years
+    """
+    days_left = (course_start - today).days
+    year = math.trunc(days_left/365)
+    month = math.trunc(days_left/30)
+    if(year>0):
+        time_left = [year,'y']
+    elif(month>0 and month<=12):
+        time_left = [month,'m']
+    elif(days_left<=31):
+        time_left = [days_left,'d']
+    return time_left
+    
 
 def get_course_ctgs(courses):
     """
@@ -127,13 +162,105 @@ def set_data_courses(courses):
         str(x['id']) : {
             'short_description' : x['short_description'], 
             'advertised_start' : x['advertised_start'], 
-            'display_org_with_default' : x['display_org_with_default']
+            'display_org_with_default' : x['display_org_with_default'],
+            'invitation_only' : x['invitation_only']
             } 
-        for x in list(CourseOverview.objects.filter(id__in=course_ids).values('id', 'short_description', 'advertised_start', 'display_org_with_default'))
+        for x in list(CourseOverview.objects.filter(id__in=course_ids).values('id', 'short_description', 'advertised_start', 'display_org_with_default','invitation_only'))
         }
+    today = timezone.now()
     new_data = []
     for course in courses:
-        course['extra_data'] = course_overviews.get(course['_id'], {})
-        course['extra_data']['main_classification'] = main_classifications.get(course['_id'], {})
-        new_data.append(course)
-    return new_data
+        new_course = course["data"]
+        course_start = new_course.get("start",None)
+        new_course['time_left']= set_time_left(datetime.fromisoformat(course_start), today)
+        new_course['course_state']= ""
+        new_course['extra_data'] = course_overviews.get(course['_id'], {})
+        new_course['extra_data']['main_classification'] = main_classifications.get(course['_id'], {})
+        new_data.append(new_course)
+    new_courses_data = classify_and_sort_courses_dict(new_data, today)
+    return new_courses_data
+
+def classify_and_sort_courses_dict(courses, today):
+    """
+    Classify and sort courses based on their state and proximity to the current date using a dictionary.
+    """
+    # Next variables are made by course state and enrollment state
+    ongoing_enrollable_courses = []
+    upcoming_enrollable_courses = []
+    upcoming_notenrollable_courses = []
+    ongoing_notenrollable_courses = []
+    # Completed courses
+    completed_courses = []
+
+    for course in courses:
+        course_start = datetime.fromisoformat(course.get('start', None))
+        course_end = course.get('end', None)
+        if course_end is not None:
+            course_end = datetime.fromisoformat(course_end)
+        enroll_start = datetime.fromisoformat(course.get('enrollment_start')) if course.get('enrollment_start') else course_start
+        enroll_end =  datetime.fromisoformat(course.get('enrollment_end')) if course.get('enrollment_end') else course_end
+        extra_data = course.get('extra_data', None)
+        if extra_data is not None:
+            is_invitation_only = extra_data.get('invitation_only', False)
+        else:
+            is_invitation_only = False
+        # Ensure that enroll_start and enroll_end are not None before comparisons
+        # If enroll_start is None, set it to course_start
+        if enroll_start is None:
+            enroll_start = course_start
+        # If enroll_end is None, set it to course_end or a future date
+        if enroll_end is None:
+            enroll_end =  course_end if course_end else today.replace(year=today.year + 100)
+        # If the course enrollment is by invitation
+        if is_invitation_only:
+            # If course hasn't started yet
+            if course_start > today:
+                course["course_state"] = 'upcoming_notenrollable'
+                upcoming_notenrollable_courses.append(course)
+            # course already start
+            else:
+                course["course_state"] = 'ongoing_notenrollable'
+                ongoing_notenrollable_courses.append(course)
+        # If today is between enrollment range and the course already started 
+        elif enroll_start <= today and (enroll_end > today) and course_start <= today and (course_end is None or course_end > today):
+            course["course_state"] = 'ongoing_enrollable'
+            ongoing_enrollable_courses.append(course)
+        # If you are not within the registration deadline today and the course has already begun
+        elif enroll_start < today and (enroll_end < today) and course_start <= today and (course_end is None or course_end > today):
+            course["course_state"] = 'ongoing_notenrollable'
+            ongoing_notenrollable_courses.append(course)
+        # If you are not within the registration deadline today and the course has not yet started
+        elif enroll_start < today and (enroll_end < today) and course_start > today and (course_end is None or course_end > today):
+            course["course_state"] = 'upcoming_notenrollable'
+            upcoming_notenrollable_courses.append(course)
+        # If you are within the enrollment range today and the course has not yet started
+        elif enroll_start <= today and (enroll_end > today) and course_start > today:
+            course["course_state"] = 'upcoming_enrollable'
+            upcoming_enrollable_courses.append(course)
+        # If you are not within the enrollment range today and the course has not yet started
+        elif enroll_start > today and (enroll_end > today) and course_start > today:
+            course["course_state"] = 'upcoming_notenrollable'
+            upcoming_notenrollable_courses.append(course)
+        # If today is after the end date of the course
+        elif course_end is not None and course_end <= today:
+            course["course_state"] = 'completed'
+            completed_courses.append(course)
+        else:
+            course["course_state"] = 'other'
+            completed_courses.append(course)
+
+    ongoing_enrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
+    upcoming_enrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
+    upcoming_notenrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
+    ongoing_notenrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
+    completed_courses.sort(key=lambda course: sort_key(course, today, key='end'))
+
+    # Combine the lists
+    sorted_courses = (
+        ongoing_enrollable_courses +
+        upcoming_enrollable_courses +
+        upcoming_notenrollable_courses +
+        ongoing_notenrollable_courses +
+        completed_courses
+    )
+    return sorted_courses
