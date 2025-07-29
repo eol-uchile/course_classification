@@ -217,10 +217,14 @@ def classify_and_sort_courses_dict(courses, today):
             if course_start > today:
                 course["course_state"] = 'upcoming_notenrollable'
                 upcoming_notenrollable_courses.append(course)
-            # course already start
-            else:
+            # If course hasn't ended and already start
+            elif course_end < today:
                 course["course_state"] = 'ongoing_notenrollable'
                 ongoing_notenrollable_courses.append(course)
+            # If course already end
+            else:
+                course["course_state"] = 'completed'
+                completed_courses.append(course)
         # If today is between enrollment range and the course already started 
         elif enroll_start <= today and (enroll_end > today) and course_start <= today and (course_end is None or course_end > today):
             course["course_state"] = 'ongoing_enrollable'
