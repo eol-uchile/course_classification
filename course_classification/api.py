@@ -60,14 +60,17 @@ def course_discovery_search_eol(search_term=None, size=20, from_=0, order_by="",
             # Check if the start date is greater than today
             else:
                 query &= Q(start__gt = datetime.utcnow())
+    results = {}
     # Check if classification exist
     if classification != "":
         try:
             courses = get_courses_by_classification(int(classification))
             query &= Q(id__in=courses)
         except Exception as e:
-            log.error("Course Discovery - Error in course_classification get_courses_by_classification function, error: {}".format(str(e)))
-            pass
+            error = f'Course Discovery - Error in course_classification get_courses_by_classification function, error: {format(str(e))}'
+            log.error(error)
+            results['error'] = error
+            return results
     # Check if query is not empty
     if query:
         ids = list(CourseOverview.objects.exclude(query).values("id"))
@@ -89,6 +92,8 @@ def course_discovery_search_eol(search_term=None, size=20, from_=0, order_by="",
     try:
         results['results'] = set_data_courses(results['results'])
     except Exception as e:
-        log.error("Course Discovery - Error in course_classification set_data_courses function, error: {}".format(str(e)))
-        pass
+        error = f'Course Discovery - Error in course_classification set_data_courses function, error: {format(str(e))}'
+        log.error(error)
+        results['error'] = error
+        return results
     return results
