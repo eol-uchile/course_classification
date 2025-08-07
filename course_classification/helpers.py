@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 # Python Standard Libraries
-from collections import OrderedDict
 from datetime import datetime
+import json
 import logging
 import math
 
@@ -15,6 +15,7 @@ from openedx.core.djangoapps.content.course_overviews.models import CourseOvervi
 
 # Internal project dependencies
 from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
+
 
 log = logging.getLogger(__name__)
     
@@ -42,58 +43,6 @@ def set_time_left(course_start,today):
     elif(days_left<=31):
         time_left = [days_left,'d']
     return time_left
-    
-
-def get_course_ctgs(courses):
-    """
-        Return dict with categories and its courses
-    """
-    ret_courses = OrderedDict()
-    ret_courses['featured'] = []
-    mc_courses= {}
-    if CourseClassification.objects.filter(is_featured_course=True).exists():
-        for course in courses:
-            try:
-                course_class = CourseClassification.objects.get(course_id=course.id)
-                if course_class.is_featured_course:
-                    ret_courses['featured'].append(course)
-                    if course_class.MainClass:
-                        mc_courses[course.id] = {'name': course_class.MainClass.name, 'logo': course_class.MainClass.logo}
-            except CourseClassification.DoesNotExist:
-                pass
-        if ret_courses['featured']:
-            return ret_courses, mc_courses
-    del ret_courses['featured']
-
-    for main in CourseCategory.objects.all().order_by('sequence'):
-        ret_courses[main.id] = {'id':main.id,'name':main.name, 'seq':main.sequence,'show_opt':main.show_opt, 'courses':[]}
-    mc_courses= {}
-    for course in courses:
-        try:
-            course_class = CourseClassification.objects.get(course_id=course.id)
-            if course_class.MainClass:
-                mc_courses[course.id] = {'name': course_class.MainClass.name, 'logo': course_class.MainClass.logo}
-            for ctg in course_class.course_category.all():
-                ret_courses[ctg.id]['courses'].append(course)
-        except CourseClassification.DoesNotExist:
-            pass
-    return ret_courses, mc_courses
-
-def get_featured_courses():
-    """
-        Return featured courses
-    """
-    courses = []
-    mc_courses= {}
-    if CourseClassification.objects.filter(is_featured_course=True).exists():
-        cc = [x.course_id for x in CourseClassification.objects.filter(is_featured_course=True)]
-        courses = CourseOverview.objects.filter(id__in=cc, catalog_visibility="both")
-        mc_courses = {
-            x.course_id: {
-                'name': x.MainClass.name, 
-                'logo': x.MainClass.logo
-                } for x in CourseClassification.objects.filter(is_featured_course=True) if x.MainClass}
-    return courses, mc_courses
 
 def get_all_logos():
     """
@@ -123,7 +72,7 @@ def get_courses_by_classification(org_id):
     course_ids = [x['course_id'] for x in courses]
     return course_ids
 
-def set_data_courses(courses):
+def set_data_courses(origin_courses):
     """
         [
             {
@@ -150,7 +99,8 @@ def set_data_courses(courses):
             }, {...},{...},{...}
         ]
     """
-    course_ids = [CourseKey.from_string(c['_id']) for c in courses]
+    courses = origin_courses
+    course_ids = [CourseKey.from_string(c['_id']) for c in origin_courses]
     main_classifications = {
         str(x.course_id) : {
             'name':x.MainClass.name, 
@@ -164,7 +114,7 @@ def set_data_courses(courses):
             'advertised_start' : x['advertised_start'], 
             'display_org_with_default' : x['display_org_with_default'],
             'invitation_only' : x['invitation_only']
-            } 
+            }
         for x in list(CourseOverview.objects.filter(id__in=course_ids).values('id', 'short_description', 'advertised_start', 'display_org_with_default','invitation_only'))
         }
     today = timezone.now()
@@ -172,10 +122,10 @@ def set_data_courses(courses):
     for course in courses:
         new_course = course["data"]
         course_start = new_course.get("start",None)
-        new_course['time_left']= set_time_left(datetime.fromisoformat(course_start), today)
-        new_course['course_state']= ""
         new_course['extra_data'] = course_overviews.get(course['_id'], {})
         new_course['extra_data']['main_classification'] = main_classifications.get(course['_id'], {})
+        new_course['time_left'] = set_time_left(datetime.fromisoformat(course_start), today)
+        new_course['course_state']= ""
         new_data.append(new_course)
     new_courses_data = classify_and_sort_courses_dict(new_data, today)
     return new_courses_data

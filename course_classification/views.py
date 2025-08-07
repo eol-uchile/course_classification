@@ -2,11 +2,13 @@
 # -- coding: utf-8 --
 
 # Python Standard Libraries
+import json
 import logging
 
 # Installed packages (via pip)
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
+from django.test.client import RequestFactory
 from django.utils.translation import ugettext as _
 from django.views.decorators.http import require_POST
 from django.views.generic.base import View
@@ -16,14 +18,13 @@ import six
 
 # Edx dependencies
 from common.djangoapps.util.json_request import JsonResponse
-from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 
 # Internal project dependencies
 from .api import *
-from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate
+from .models import MainCourseClassification, MainCourseClassificationTemplate
 
 logger = logging.getLogger(__name__)
-
+   
 class CourseClassificationView(View):
     """
         Page view for institutions (MainCourseClassification)
@@ -41,7 +42,6 @@ class CourseClassificationView(View):
             if classification.banner == "":
                 logger.info("CourseClassificationView - Classification dont have banner, MainCourseClassification id: {}".format(org_id))
                 return HttpResponseRedirect('/')
-            
             if MainCourseClassificationTemplate.objects.filter(main_classification=classification, language=lang).exists():
                 template = MainCourseClassificationTemplate.objects.get(main_classification=classification, language=lang)
             elif MainCourseClassificationTemplate.objects.filter(main_classification=classification, language=lang_options[0]).exists():
@@ -49,12 +49,28 @@ class CourseClassificationView(View):
             else:
                 logger.info("CourseClassificationView - Classification dont have es_419 or en template, MainCourseClassification id: {}".format(org_id))
                 return HttpResponseRedirect('/')
-            course_ids = [x.course_id for x in CourseClassification.objects.filter(MainClass=classification)]
+            # Recreate https request
+            factory = RequestFactory()
+            data = {
+                'search_string': '',
+                'order_by': '',
+                'year': '',
+                'state': '',
+                'classification': org_id,
+                'page_size': '20',
+                'page_index': '0'
+            }
+            # Request call using data parameters
+            request = factory.post('/course_classification/search/', data=data)
+            response = course_discovery_eol(request)
+            results = json.loads(response.content)
+            # Get courses from results
+            courses = results["results"]
             context = {
                 'institution_name': classification.name,
                 'institution_banner': classification.banner.url,
                 'institution_html': template.template,
-                'courses': CourseOverview.objects.filter(id__in=course_ids)
+                'courses': courses
             }
             return render(request, 'course_classification/institution.html', context)
         except Exception as e:
@@ -95,6 +111,7 @@ def course_discovery_eol(request):
     year = request.POST.get("year", "")
     state = request.POST.get("state", "")
     cc = request.POST.get("classification", "")
+    featured = bool(request.POST.get("featured", False))
 
     try:
         size, from_, page = _process_pagination_values(request)
@@ -116,7 +133,8 @@ def course_discovery_eol(request):
             order_by=order_by,
             year=year,
             state=state,
-            classification=cc
+            classification=cc,
+            featured= featured
         )
 
         # Analytics - log search results before sending to browser
