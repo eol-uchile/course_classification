@@ -20,10 +20,11 @@ from openedx.core.djangoapps.content.course_overviews.models import CourseOvervi
 
 # Internal project dependencies
 from .api import *
+from .helpers import set_data_courses, set_datetime_courses_parameters
 from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate
 
 logger = logging.getLogger(__name__)
-
+   
 class CourseClassificationView(View):
     """
         Page view for institutions (MainCourseClassification)
@@ -41,7 +42,6 @@ class CourseClassificationView(View):
             if classification.banner == "":
                 logger.info("CourseClassificationView - Classification dont have banner, MainCourseClassification id: {}".format(org_id))
                 return HttpResponseRedirect('/')
-            
             if MainCourseClassificationTemplate.objects.filter(main_classification=classification, language=lang).exists():
                 template = MainCourseClassificationTemplate.objects.get(main_classification=classification, language=lang)
             elif MainCourseClassificationTemplate.objects.filter(main_classification=classification, language=lang_options[0]).exists():
@@ -50,11 +50,13 @@ class CourseClassificationView(View):
                 logger.info("CourseClassificationView - Classification dont have es_419 or en template, MainCourseClassification id: {}".format(org_id))
                 return HttpResponseRedirect('/')
             course_ids = [x.course_id for x in CourseClassification.objects.filter(MainClass=classification)]
+            courses_sorted = set_data_courses(CourseOverview.objects.filter(id__in=course_ids), True)
+            courses = set_datetime_courses_parameters(courses_sorted)
             context = {
                 'institution_name': classification.name,
                 'institution_banner': classification.banner.url,
                 'institution_html': template.template,
-                'courses': CourseOverview.objects.filter(id__in=course_ids)
+                'courses': courses
             }
             return render(request, 'course_classification/institution.html', context)
         except Exception as e:

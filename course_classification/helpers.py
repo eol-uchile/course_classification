@@ -2,12 +2,14 @@
 # Python Standard Libraries
 from collections import OrderedDict
 from datetime import datetime
+import json
 import logging
 import math
 
 # Installed packages (via pip)
 from django.urls import reverse
 from django.utils import timezone
+from django.forms.models import model_to_dict
 
 # Edx dependencies
 from opaque_keys.edx.keys import CourseKey
@@ -62,6 +64,8 @@ def get_course_ctgs(courses):
             except CourseClassification.DoesNotExist:
                 pass
         if ret_courses['featured']:
+            courses_sorted = set_data_courses(ret_courses['featured'], True)
+            ret_courses['featured'] = set_datetime_courses_parameters(courses_sorted)
             return ret_courses, mc_courses
     del ret_courses['featured']
 
@@ -123,7 +127,7 @@ def get_courses_by_classification(org_id):
     course_ids = [x['course_id'] for x in courses]
     return course_ids
 
-def set_data_courses(courses):
+def set_data_courses(origin_courses, is_model):
     """
         [
             {
@@ -150,7 +154,13 @@ def set_data_courses(courses):
             }, {...},{...},{...}
         ]
     """
-    course_ids = [CourseKey.from_string(c['_id']) for c in courses]
+    if(is_model):
+        course_ids = [x.id for x in origin_courses]
+        courses = list(origin_courses)
+    else:
+        courses = origin_courses
+        course_ids = [CourseKey.from_string(c['_id']) for c in origin_courses]  
+    
     main_classifications = {
         str(x.course_id) : {
             'name':x.MainClass.name, 
@@ -170,12 +180,25 @@ def set_data_courses(courses):
     today = timezone.now()
     new_data = []
     for course in courses:
-        new_course = course["data"]
-        course_start = new_course.get("start",None)
-        new_course['time_left']= set_time_left(datetime.fromisoformat(course_start), today)
+        if(is_model):
+            new_course = model_to_dict(course)             
+            for key, value in new_course.items():
+                if isinstance(value, datetime):
+                    new_course[key] = value.isoformat()
+            course_start = new_course.get("start",None)
+            new_course['id'] = str(course.id)
+            new_course['extra_data'] = course_overviews.get(course.id, {})
+            new_course['extra_data']['main_classification'] = main_classifications.get(course.id, {})
+            new_course['display_name_with_default'] = new_course.get("display_name",'')
+            new_course.pop("_location")
+            new_course.pop("lowest_passing_grade")
+        else:
+            new_course = course["data"]
+            course_start = new_course.get("start",None)
+            new_course['extra_data'] = course_overviews.get(course['_id'], {})
+            new_course['extra_data']['main_classification'] = main_classifications.get(course['_id'], {})
+        new_course['time_left'] = set_time_left(datetime.fromisoformat(course_start), today)
         new_course['course_state']= ""
-        new_course['extra_data'] = course_overviews.get(course['_id'], {})
-        new_course['extra_data']['main_classification'] = main_classifications.get(course['_id'], {})
         new_data.append(new_course)
     new_courses_data = classify_and_sort_courses_dict(new_data, today)
     return new_courses_data
@@ -268,3 +291,45 @@ def classify_and_sort_courses_dict(courses, today):
         completed_courses
     )
     return sorted_courses
+
+class obj:
+    """
+    Auxiliary class to pass dictionary to object method
+    """
+    def __init__(self, dict1):
+        self.__dict__.update(dict1)
+
+def dict_to_obj(dict1):
+    """
+    Using json.loads method and passing json.dumps method and custom object hook as arguments
+    """
+    return json.loads(json.dumps(dict1), object_hook=obj)
+
+def set_datetime_courses_parameters(courses_sorted):
+    """
+    Cast datetime to parameters that are string to each course
+    """
+    courses = []
+    for course in courses_sorted:
+        temporal_course = dict_to_obj(course)
+        if temporal_course.start != None :
+            temporal_course.start = datetime.fromisoformat(temporal_course.start)
+        else:
+            temporal_course.start = None
+        
+        if temporal_course.end != None :
+            temporal_course.end = datetime.fromisoformat(temporal_course.end)
+        else:
+            temporal_course.end = None
+        if temporal_course.enrollment_start != None :
+            temporal_course.enrollment_start = datetime.fromisoformat(temporal_course.enrollment_start)
+        else:
+            temporal_course.enrollment_start =None
+
+        if temporal_course.enrollment_end != None :
+            temporal_course.enrollment_end = datetime.fromisoformat(temporal_course.enrollment_end)
+        else:
+            temporal_course.enrollment_end =None
+        courses.append(temporal_course)
+    return courses
+
