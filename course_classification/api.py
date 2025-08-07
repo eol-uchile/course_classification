@@ -87,7 +87,7 @@ def course_discovery_search_eol(search_term=None, size=20, from_=0, order_by="",
         sort=sort
     )
     try:
-        results['results'] = set_data_courses(results['results'])
+        results['results'] = set_data_courses(results['results'], False)
     except Exception as e:
         log.error("Course Discovery - Error in course_classification set_data_courses function, error: {}".format(str(e)))
         pass
