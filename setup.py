@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="course_classification",
-    version="1.1.1",
+    version="1.1.2",
     author="Oficina EOL UChile",
     author_email="eol-ing@uchile.cl",
     description=".",
