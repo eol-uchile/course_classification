@@ -218,7 +218,7 @@ def classify_and_sort_courses_dict(courses, today):
                 course["course_state"] = 'upcoming_notenrollable'
                 upcoming_notenrollable_courses.append(course)
             # If course hasn't ended and already start
-            elif course_end < today:
+            elif course_end is None or course_end > today:
                 course["course_state"] = 'ongoing_notenrollable'
                 ongoing_notenrollable_courses.append(course)
             # If course already end
