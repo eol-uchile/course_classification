@@ -12,9 +12,11 @@ from django.utils import timezone
 # Edx dependencies
 from opaque_keys.edx.keys import CourseKey
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from common.djangoapps.course_modes.models import get_cosmetic_display_price
+from lms.djangoapps.courseware.courses import get_course_by_id
 
 # Internal project dependencies
-from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
+from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate
 
 
 log = logging.getLogger(__name__)
@@ -113,20 +115,29 @@ def set_data_courses(origin_courses):
             'short_description' : x['short_description'], 
             'advertised_start' : x['advertised_start'], 
             'display_org_with_default' : x['display_org_with_default'],
-            'invitation_only' : x['invitation_only']
+            'invitation_only' : x['invitation_only'],
+            'effort' : x['effort'],
+            'self_paced' : x['self_paced']
             }
-        for x in list(CourseOverview.objects.filter(id__in=course_ids).values('id', 'short_description', 'advertised_start', 'display_org_with_default','invitation_only'))
+        for x in list(CourseOverview.objects.filter(id__in=course_ids).values('id', 'short_description', 'advertised_start', 'display_org_with_default','self_paced','effort','invitation_only'))
         }
     today = timezone.now()
     new_data = []
     for course in courses:
-        new_course = course["data"]
-        course_start = new_course.get("start",None)
-        new_course['extra_data'] = course_overviews.get(course['_id'], {})
-        new_course['extra_data']['main_classification'] = main_classifications.get(course['_id'], {})
-        new_course['time_left'] = set_time_left(datetime.fromisoformat(course_start), today)
-        new_course['course_state']= ""
-        new_data.append(new_course)
+        try:
+            course_aux = get_course_by_id(CourseKey.from_string(course['_id']))
+            course_price = get_cosmetic_display_price(course_aux)
+            new_course = course["data"]
+            course_start = new_course.get("start",None)
+            new_course['extra_data'] = course_overviews.get(course['_id'], None)
+            new_course['extra_data']['main_classification'] = main_classifications.get(course['_id'], None)
+            new_course['extra_data']['price'] = course_price
+            new_course['time_left'] = set_time_left(datetime.fromisoformat(course_start), today)
+            new_course['course_state']= ""
+            new_data.append(new_course)
+        except Exception as e:
+            error = f'Course Discovery - Error in course_classification set_data_courses function course not found, error: {format(str(e))}'
+            log.error(error)
     new_courses_data = classify_and_sort_courses_dict(new_data, today)
     return new_courses_data
 
