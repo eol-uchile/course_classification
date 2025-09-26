@@ -61,9 +61,13 @@ def get_all_logos():
 
 def get_all_main_classifications():
     """
-        Return all active main classification
+        Return all active main classification that have courses
     """
-    orgs = [[x.id, x.name] for x in MainCourseClassification.objects.filter(is_active=True, visibility__in=[1,2]).order_by('sequence')]
+    orgs = [[x.id, x.name] for x in MainCourseClassification.objects.filter(
+        is_active=True,
+        visibility__in=[1, 2],
+        id__in=CourseClassification.objects.values_list('MainClass', flat=True).distinct()
+    ).order_by('sequence')]
     return orgs
 
 def get_courses_by_classification(org_id):
