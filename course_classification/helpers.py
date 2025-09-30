@@ -16,7 +16,7 @@ from common.djangoapps.course_modes.models import get_cosmetic_display_price
 from lms.djangoapps.courseware.courses import get_course_by_id
 
 # Internal project dependencies
-from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate
+from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
 
 
 log = logging.getLogger(__name__)
@@ -69,6 +69,24 @@ def get_all_main_classifications():
         id__in=CourseClassification.objects.values_list('MainClass', flat=True).distinct()
     ).order_by('sequence')]
     return orgs
+
+def get_all_course_categories():
+    """
+        Return all active course categories that have courses
+    """
+    orgs = [[x.id, x.name] for x in CourseCategory.objects.filter(
+        show_opt__in=[1, 2],
+        courseclassification__isnull=False
+    ).distinct().order_by('sequence')]
+    return orgs
+
+def get_courses_by_category(category_id):
+    """
+        Return list of courses ids by course category
+    """
+    courses = list(CourseClassification.objects.filter(course_category__id=category_id).values('course_id'))
+    course_ids = [x['course_id'] for x in courses]
+    return course_ids
 
 def get_courses_by_classification(org_id):
     """

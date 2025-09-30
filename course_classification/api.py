@@ -11,13 +11,13 @@ from search.api import *
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 
 # Internal project dependencies
-from course_classification.helpers import get_courses_by_classification, set_data_courses
+from course_classification.helpers import get_courses_by_classification, set_data_courses, get_courses_by_category
 from .models import CourseClassification
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
-def course_discovery_search_eol(search_term=None, size=20, from_=0, order_by="", year="", state="", classification="", featured=""):
+def course_discovery_search_eol(search_term=None, size=20, from_=0, order_by="", year="", state="", classification="", category="", featured=""):
     """
     Course Discovery activities against the search engine index of course details
     """
@@ -69,6 +69,16 @@ def course_discovery_search_eol(search_term=None, size=20, from_=0, order_by="",
             query &= Q(id__in=courses)
         except Exception as e:
             error = f'Course Discovery - Error in course_classification get_courses_by_classification function, error: {format(str(e))}'
+            log.error(error)
+            results['error'] = error
+            return results
+    # Check if category exist
+    if category != "":
+        try:
+            courses = get_courses_by_category(int(category))
+            query &= Q(id__in=courses)
+        except Exception as e:
+            error = f'Course Discovery - Error in course_classification get_courses_by_category function, error: {format(str(e))}'
             log.error(error)
             results['error'] = error
             return results

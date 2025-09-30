@@ -111,6 +111,7 @@ def course_discovery_eol(request):
     year = request.POST.get("year", "")
     state = request.POST.get("state", "")
     cc = request.POST.get("classification", "")
+    category = request.POST.get("category", "")
     featured = bool(request.POST.get("featured", False))
 
     try:
@@ -134,6 +135,7 @@ def course_discovery_eol(request):
             year=year,
             state=state,
             classification=cc,
+            category=category,
             featured= featured
         )
 
