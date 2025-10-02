@@ -63,10 +63,11 @@ def get_all_main_classifications():
     """
         Return all active main classification that have courses
     """
+    courses_with_both_visibility = CourseOverview.objects.filter(catalog_visibility="both").values("id")
     orgs = [[x.id, x.name] for x in MainCourseClassification.objects.filter(
         is_active=True,
         visibility__in=[1, 2],
-        id__in=CourseClassification.objects.values_list('MainClass', flat=True).distinct()
+        id__in=CourseClassification.objects.filter(course_id__in = courses_with_both_visibility).values_list('MainClass', flat=True).distinct()
     ).order_by('sequence')]
     return orgs
 
@@ -74,9 +75,11 @@ def get_all_course_categories():
     """
         Return all active course categories that have courses
     """
+    courses_with_both_visibility = CourseOverview.objects.filter(catalog_visibility="both").values("id")
     orgs = [[x.id, x.name] for x in CourseCategory.objects.filter(
         show_opt__in=[1, 2],
-        courseclassification__isnull=False
+        courseclassification__isnull=False,
+        courseclassification__course_id__in = courses_with_both_visibility
     ).distinct().order_by('sequence')]
     return orgs
 
