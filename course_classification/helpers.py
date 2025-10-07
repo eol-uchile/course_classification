@@ -161,8 +161,8 @@ def set_data_courses(origin_courses):
             new_course['course_state']= ""
             new_data.append(new_course)
         except Exception as e:
-            error = f'Course Discovery - Error in course_classification set_data_courses function course not found, error: {format(str(e))}'
-            log.error(error)
+            error = f"Course Discovery - Error in course_classification set_data_courses function course not found, with course_id: {course['_id']} and exception: {e}"
+            log.exception(error)
     new_courses_data = classify_and_sort_courses_dict(new_data, today)
     return new_courses_data
 
