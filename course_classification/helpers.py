@@ -166,6 +166,12 @@ def set_data_courses(origin_courses):
     new_courses_data = classify_and_sort_courses_dict(new_data, today)
     return new_courses_data
 
+def sort_key(course, key='start'):
+    """
+    Order by start by transform string in datetime
+    """
+    return datetime.fromisoformat(course[key])
+
 def classify_and_sort_courses_dict(courses, today):
     """
     Classify and sort courses based on their state and proximity to the current date using a dictionary.
@@ -239,11 +245,11 @@ def classify_and_sort_courses_dict(courses, today):
             course["course_state"] = 'other'
             completed_courses.append(course)
 
-    ongoing_enrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
-    upcoming_enrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
-    upcoming_notenrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
-    ongoing_notenrollable_courses.sort(key=lambda course: sort_key(course, today, key='start'))
-    completed_courses.sort(key=lambda course: sort_key(course, today, key='end'))
+    ongoing_enrollable_courses.sort(key=lambda course: sort_key(course, key='start'))
+    upcoming_enrollable_courses.sort(key=lambda course: sort_key(course, key='start'))
+    upcoming_notenrollable_courses.sort(key=lambda course: sort_key(course, key='start'))
+    ongoing_notenrollable_courses.sort(key=lambda course: sort_key(course, key='start'))
+    completed_courses.sort(key=lambda course: sort_key(course, key='start'))
 
     # Combine the lists
     sorted_courses = (
