@@ -13,9 +13,8 @@ from django.test import Client
 from django.test.utils import override_settings
 from django.urls import reverse
 from django.utils import timezone
-from mock import patch, MagicMock
+from mock import patch, MagicMock, Mock
 from search.api import NoSearchEngineError
-from search.elastic import ElasticSearchEngine
 from search.tests.utils import SearcherMixin, TEST_INDEX_NAME
 
 # Edx dependencies
@@ -23,12 +22,11 @@ from common.djangoapps.student.tests.factories import UserFactory, CourseEnrollm
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
 from xmodule.modulestore.tests.factories import CourseFactory
-from opaque_keys.edx.keys import CourseKey, UsageKey
 
 # Internal project dependencies
 from . import utils, helpers
 from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
-from .views import CourseClassificationView, course_discovery_eol
+from .views import CourseClassificationView, course_discovery_eol, get_main_classifications_view, get_course_categories_view
 from .api import course_discovery_search_eol
 
 class TestRequest(object):
@@ -138,7 +136,7 @@ class TestCourseClassification(ModuleStoreTestCase):
         response = helpers.get_all_logos()
         self.assertEqual(len(response), 1)
         self.assertEqual(response, expected)
-    
+
     def test_helpers_get_all_logos_with_templates(self):
         """
             Test get_all_logos() normal process with template
@@ -302,7 +300,7 @@ class TestCourseClassification(ModuleStoreTestCase):
 
         response = helpers.get_courses_by_category(999)
         self.assertEqual(response, [])
-    
+
     def test_helpers_get_courses_by_classification(self):
         """
             Test get_courses_by_classification() normal process
@@ -334,10 +332,12 @@ class TestCourseClassification(ModuleStoreTestCase):
 
         response = helpers.get_courses_by_classification(999)
         self.assertEqual(response, [])
-    
+
     def test_set_data_courses(self):
         """
             test set data course normal process
+            1. Sorted from the most recent date to the oldest.
+            2. Sorted from oldest to most recent.
         """
         mcc1 = MainCourseClassification(
             name="MCC1",
@@ -366,6 +366,7 @@ class TestCourseClassification(ModuleStoreTestCase):
         cc2 = CourseClassification.objects.create(course_id=self.course2.id, MainClass=mcc2)
         cc2.save()
         today = timezone.now()
+        # Newer
         response = helpers.set_data_courses([{'_id':str(self.course.id),'data': {
                         'id': str(self.course.id),
                         'start': str(self.course.start_date)
@@ -375,21 +376,24 @@ class TestCourseClassification(ModuleStoreTestCase):
                     }},{'_id':str(self.course3.id),'data': {
                         'id': str(self.course3.id),
                         'start': str(self.course3.start_date)
-                    }}])
+                    }}], 'start:desc',"","",False)
         expected = [
+             {'id':str(self.course3.id),'start': str(self.course3.start_date), 
+             'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course3.start_date)), today),
+             'course_state': 'ongoing_enrollable',
+             'extra_data':{
+                                            'invitation_only': False,
+                                            'effort': None,
+                                            'self_paced': False,
+                                            'price': 'Free'
+                                        }
+                                    },
             {'id':str(self.course.id), 'start': str(self.course.start_date),
              'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course.start_date)), today),
              'course_state': 'ongoing_enrollable',
              'extra_data':{
-                                            'short_description' : None, 
-                                            'advertised_start' : None, 
-                                            'display_org_with_default' : 'MCC1',
                                             'invitation_only': False,
                                             'effort': False,
-                                            'main_classification':{
-                                                'name':mcc1.name, 
-                                                'logo':mcc1.logo.url 
-                                            },
                                             'effort': None, 
                                             'self_paced': False,
                                             'price': 'Free'
@@ -399,28 +403,52 @@ class TestCourseClassification(ModuleStoreTestCase):
              'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course2.start_date)), today),
              'course_state': 'ongoing_enrollable',
              'extra_data':{
-                                            'short_description' : None, 
-                                            'advertised_start' : None, 
-                                            'display_org_with_default' : 'MCC1',
                                             'invitation_only': False,
-                                            'main_classification':{
-                                                'name':mcc2.name, 
-                                                'logo':''
-                                            },
                                             'effort': None,
                                             'self_paced': False,
                                             'price': 'Free'
+                                        }
+                                    }
+            ]
+        self.assertEqual(response, expected)
+        #older
+        response = helpers.set_data_courses([{'_id':str(self.course.id),'data': {
+                        'id': str(self.course.id),
+                        'start': str(self.course.start_date)
+                    }},{'_id':str(self.course2.id),'data': {
+                        'id': str(self.course2.id),
+                        'start': str(self.course2.start_date)
+                    }},{'_id':str(self.course3.id),'data': {
+                        'id': str(self.course3.id),
+                        'start': str(self.course3.start_date)
+                    }}], 'start',"","",False)
+        expected = [
+             {'id':str(self.course2.id), 'start': str(self.course2.start_date),
+             'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course2.start_date)), today),
+             'course_state': 'ongoing_enrollable',
+             'extra_data':{
+                                            'invitation_only': False,
+                                            'effort': None,
+                                            'self_paced': False,
+                                            'price': 'Free'
+                                        }
+                                    },
+            {'id':str(self.course.id), 'start': str(self.course.start_date),
+             'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course.start_date)), today),
+             'course_state': 'ongoing_enrollable',
+             'extra_data':{
+                                            'invitation_only': False,
+                                            'effort': False,
+                                            'effort': None, 
+                                            'self_paced': False,
+                                           'price': 'Free'
                                         }
                                     },
             {'id':str(self.course3.id),'start': str(self.course3.start_date), 
              'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course3.start_date)), today),
              'course_state': 'ongoing_enrollable',
              'extra_data':{
-                                            'short_description' : None, 
-                                            'advertised_start' : None, 
-                                            'display_org_with_default' : 'MCC1',
                                             'invitation_only': False,
-                                            'main_classification': None,
                                             'effort': None,
                                             'self_paced': False,
                                             'price': 'Free'
@@ -456,21 +484,14 @@ class TestCourseClassification(ModuleStoreTestCase):
                         'start':  str(self.course.start_date)
                     }},{'_id':'course-v1:eol+Test+2023','data': {
                         'id':'course-v1:eol+Test+2023','start':  str(self.course.start_date)}
-                        },])
+                        }], 'start',"","",False)
         today = timezone.now()
         expected = [
             {'id':str(self.course.id),'start':  str(self.course.start_date),
             'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course.start_date)), today),
             'course_state': 'ongoing_enrollable',
             'extra_data':{
-                'short_description' : None,
-                'advertised_start' : None, 
-                'display_org_with_default' : 'MCC1',
                 'invitation_only': False,
-                'main_classification':{
-                    'name':mcc1.name, 
-                    'logo':mcc1.logo.url 
-                },
                 'effort': None,
                 'self_paced': False,
                 'price': 'Free'
@@ -532,7 +553,6 @@ class TestCourseClassification(ModuleStoreTestCase):
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.request['PATH_INFO'], '/institutions/1/')
         self.assertTrue('hello world' in result._container[0].decode())
-        
         # main classification does not have template
         mcc2 = MainCourseClassification(
             name="MCC2",
@@ -594,10 +614,114 @@ class TestCourseClassification(ModuleStoreTestCase):
             self.assertIsInstance(response, HttpResponseRedirect)
             self.assertEqual(response.url, '/')
 
+    def test_get_main_classifications_view(self):
+        """
+        Check if get_main_classifications_view works properly
+        """
+        request = TestRequest()
+        request.method = 'GET'
+        response = get_main_classifications_view(request)
+        response = json.loads(response.content.decode('utf-8'))
+        self.assertEqual(len(response), 0)
+        MainCourseClassification(
+            name="MCC1",
+            sequence=2,
+            visibility=2,
+            is_active=True
+            ).save()
+        MainCourseClassification(
+            name="MCC2",
+            sequence=1,
+            visibility=1,
+            is_active=True
+            ).save()
+        MainCourseClassification(
+            name="MCC3",
+            sequence=3,
+            visibility=2,
+            is_active=False
+            ).save()
+        MainCourseClassification(
+            name="MCC4",
+            sequence=4,
+            visibility=0,
+            is_active=True
+            ).save()
+        CourseClassification(
+            course_id = self.course.id,
+            MainClass = MainCourseClassification.objects.get(name="MCC1"),
+            is_featured_course = True
+        ).save()
+        expected = [{'id': 1, 'name': 'MCC1'}]
+        response = get_main_classifications_view(request)
+        response = json.loads(response.content.decode('utf-8'))
+        self.assertEqual(len(response), 1)
+        self.assertEqual(response, expected)
+
+    def test_get_course_categories_view(self):
+        """Check if get_course_categories_view works properly """
+        request = TestRequest()
+        request.method = 'GET'
+        response = get_course_categories_view(request)
+        response = json.loads(response.content.decode('utf-8'))
+        self.assertEqual(len(response), 0)
+        self.assertEqual(response, [])
+        MainCourseClassification(
+            name="MCC1",
+            sequence=1,
+            visibility=2,
+            is_active=True
+            ).save()
+        cc1 = CourseCategory(
+            name="CC1",
+            sequence=1,
+            show_opt=2
+            )
+        cc1.save()
+        cc2 = CourseCategory(
+            name="CC2",
+            sequence=2,
+            show_opt=1
+            )
+        cc2.save()
+        cc3 = CourseCategory(
+            name="CC3",
+            sequence=3,
+            show_opt=2
+            )
+        cc3.save()
+        cc4 = CourseCategory(
+            name="CC4",
+            sequence=4,
+            show_opt=0
+            )
+        cc4.save()
+        classification1 = CourseClassification(
+            course_id = self.course.id,
+            MainClass = MainCourseClassification.objects.get(name="MCC1"),
+            is_featured_course = True
+        )
+        classification1.save()
+        classification2 = CourseClassification(
+            course_id = self.course2.id,
+            MainClass = MainCourseClassification.objects.get(name="MCC1"),
+            is_featured_course = True
+        )
+        classification2.save()
+        classification1.course_category.add(cc2)
+        classification1.course_category.add(cc4)
+        classification2.course_category.add(cc1)
+        expected = [{'id': 1, 'name': 'CC1'}, {'id': 2, 'name': 'CC2'}]
+        response = get_course_categories_view(request)
+        response = json.loads(response.content.decode('utf-8'))
+        self.assertEqual(len(response), 2)
+        self.assertEqual(response, expected)
+
 class DemoCourse:
     """ Class for dispensing demo courses """
     DEMO_COURSE_ID = "edX/DemoX/Demo_Course"
     DEMO_COURSE = {
+        "_id":  "course-v1:edX+DemoX+Demo_course",
         "start": datetime(2014, 2, 1),
         "number": "DemoX",
         "content": {
@@ -661,47 +785,34 @@ class TestMockCourseDiscoverySearch(ModuleStoreTestCase, SearcherMixin):  # pyli
     Tests course discovery activities
     """
 
-    @property
-    def _is_elastic(self):
-        """ check search engine implementation, to manage cleanup differently """
-        return isinstance(self.searcher, ElasticSearchEngine)
-
     def setUp(self):
         super(TestMockCourseDiscoverySearch, self).setUp()
         DemoCourse.reset_count()
         self._searcher = None
-        course = {
-            'org':'orgA',
-            'course':'999',
-            'display_name':'2020',
-            'catalog_visibility':"both",
-            'emit_signals':True,
-            'start':'2023-03-01T00:00:00+00:00',
+        DemoCourse.get_and_index(self.searcher, {"start": "2023-02-01T00:00:00+00:00", "enrollment_start": None})
+        DemoCourse.get_and_index(self.searcher, {"start": "2023-01-01T00:00:00+00:00", "enrollment_start": '2025-03-01T00:00:00+00:00'})
 
-            }
-        self.course = CourseFactory.create(
-            org='MCC1',
-            course='999',
-            display_name='2020',
-            catalog_visibility="both",
-            emit_signals=True,
-            start_date='2023-03-01T00:00:00+00:00')
-        DemoCourse.get_and_index(self.searcher, course)
-        DemoCourse.get_and_index(self.searcher, {"enrollment_start": None})
-        DemoCourse.get_and_index(self.searcher, {"enrollment_start": datetime(2114, 1, 1)})
-
-    def test_course_list(self):
+    @patch("course_classification.helpers.get_cosmetic_display_price")
+    @patch("course_classification.helpers.get_course_by_id")
+    def test_course_list(self, _mock_get_course_id, _mock_cosmetic_price ):
         """ No arguments to course_discovery_search should show all available courses"""
+        _mock_get_course_id.return_value =  Mock(
+            self_paced=True,
+            invitation_only=False
+        )
+        _mock_cosmetic_price.return_value = "Free"
         results = course_discovery_search_eol()
-        self.assertEqual(results["total"],3)
-    
+        self.assertEqual(results["total"], 2)
+
     def test_searcher_is_none(self):
         """ Check if searcher is None ans it raises an error """
         with patch('search.api.SearchEngine.get_search_engine', return_value=None):
             with self.assertRaises(NoSearchEngineError):
                 course_discovery_search_eol()
 
-    def test_course_discovery_eol(self):
+    @patch("course_classification.helpers.get_cosmetic_display_price")
+    @patch("course_classification.helpers.get_course_by_id")
+    def test_course_discovery_eol(self,_mock_get_course_id, _mock_cosmetic_price ):
         """Check if course_discovery_eol works properly """
         request = TestRequest()
         request.method = 'POST'
@@ -712,12 +823,21 @@ class TestMockCourseDiscoverySearch(ModuleStoreTestCase, SearcherMixin):  # pyli
             'state': '',
             'classification': '',
             'page_size': '20',
-            'page_index': '0'
+            'current_page': '1',
+            'page_index': '0',
+            'only_free': False,
+            'min_price':'',
+            'max_price':''
         }
+        _mock_get_course_id.return_value =  Mock(
+            self_paced=True,
+            invitation_only=False
+        )
+        _mock_cosmetic_price.return_value = "Free"
         response = course_discovery_eol(request)
         response = json.loads(response.content.decode('utf-8'))
-        self.assertEqual(response["total"],3)
-    
+        self.assertEqual(response["total"], 2)
+
     def test_utils_get_course_ctgs(self):
         """
             Test get_course_ctgs() normal process
@@ -731,5 +851,3 @@ class TestMockCourseDiscoverySearch(ModuleStoreTestCase, SearcherMixin):  # pyli
         """
         response = utils.get_courses_filtered_by_course_state(["upcoming_notenrollable"])
         self.assertEqual(len(response), 0)
-
-   
