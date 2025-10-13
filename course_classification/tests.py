@@ -28,7 +28,7 @@ from opaque_keys.edx.keys import CourseKey, UsageKey
 # Internal project dependencies
 from . import utils, helpers
 from .models import MainCourseClassification, CourseClassification, MainCourseClassificationTemplate, CourseCategory
-from .views import CourseClassificationView, course_discovery_eol
+from .views import CourseClassificationView, course_discovery_eol, get_main_classifications_view, get_course_categories_view
 from .api import course_discovery_search_eol
 
 class TestRequest(object):
@@ -338,6 +338,8 @@ class TestCourseClassification(ModuleStoreTestCase):
     def test_set_data_courses(self):
         """
             test set data course normal process
+            1. Sort order newer courses
+            2. Sort order older courses
         """
         mcc1 = MainCourseClassification(
             name="MCC1",
@@ -366,6 +368,7 @@ class TestCourseClassification(ModuleStoreTestCase):
         cc2 = CourseClassification.objects.create(course_id=self.course2.id, MainClass=mcc2)
         cc2.save()
         today = timezone.now()
+        # Newer
         response = helpers.set_data_courses([{'_id':str(self.course.id),'data': {
                         'id': str(self.course.id),
                         'start': str(self.course.start_date)
@@ -375,21 +378,24 @@ class TestCourseClassification(ModuleStoreTestCase):
                     }},{'_id':str(self.course3.id),'data': {
                         'id': str(self.course3.id),
                         'start': str(self.course3.start_date)
-                    }}])
+                    }}], 'start',"","",False)
         expected = [
+             {'id':str(self.course3.id),'start': str(self.course3.start_date), 
+             'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course3.start_date)), today),
+             'course_state': 'ongoing_enrollable',
+             'extra_data':{
+                                            'invitation_only': False,
+                                            'effort': None,
+                                            'self_paced': False,
+                                            'price': 'Free'
+                                        }
+                                    },
             {'id':str(self.course.id), 'start': str(self.course.start_date),
              'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course.start_date)), today),
              'course_state': 'ongoing_enrollable',
              'extra_data':{
-                                            'short_description' : None, 
-                                            'advertised_start' : None, 
-                                            'display_org_with_default' : 'MCC1',
                                             'invitation_only': False,
                                             'effort': False,
-                                            'main_classification':{
-                                                'name':mcc1.name, 
-                                                'logo':mcc1.logo.url 
-                                            },
                                             'effort': None, 
                                             'self_paced': False,
                                             'price': 'Free'
@@ -399,34 +405,60 @@ class TestCourseClassification(ModuleStoreTestCase):
              'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course2.start_date)), today),
              'course_state': 'ongoing_enrollable',
              'extra_data':{
-                                            'short_description' : None, 
-                                            'advertised_start' : None, 
-                                            'display_org_with_default' : 'MCC1',
                                             'invitation_only': False,
-                                            'main_classification':{
-                                                'name':mcc2.name, 
-                                                'logo':''
-                                            },
                                             'effort': None,
                                             'self_paced': False,
                                             'price': 'Free'
+                                        }
+                                    }
+            ]
+        response = helpers.set_data_courses([{'_id':str(self.course.id),'data': {
+                        'id': str(self.course.id),
+                        'start': str(self.course.start_date)
+                    }},{'_id':str(self.course2.id),'data': {
+                        'id': str(self.course2.id),
+                        'start': str(self.course2.start_date)
+                    }},{'_id':str(self.course3.id),'data': {
+                        'id': str(self.course3.id),
+                        'start': str(self.course3.start_date)
+                    }}], 'start:desc',"","",False)
+        expected = [
+             {'id':str(self.course2.id), 'start': str(self.course2.start_date),
+             'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course2.start_date)), today),
+             'course_state': 'ongoing_enrollable',
+             'extra_data':{
+                                            'invitation_only': False,
+                                            'effort': None,
+                                            'self_paced': False,
+                                            'price': 'Free'
+                                        }
+                                    },
+             
+            {'id':str(self.course.id), 'start': str(self.course.start_date),
+             'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course.start_date)), today),
+             'course_state': 'ongoing_enrollable',
+             'extra_data':{
+                                            'invitation_only': False,
+                                            'effort': False,
+                                            'effort': None, 
+                                            'self_paced': False,
+                                           'price': 'Free'
                                         }
                                     },
             {'id':str(self.course3.id),'start': str(self.course3.start_date), 
              'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course3.start_date)), today),
              'course_state': 'ongoing_enrollable',
              'extra_data':{
-                                            'short_description' : None, 
-                                            'advertised_start' : None, 
-                                            'display_org_with_default' : 'MCC1',
                                             'invitation_only': False,
-                                            'main_classification': None,
                                             'effort': None,
                                             'self_paced': False,
                                             'price': 'Free'
                                         }
                                     },
+                                               
             ]
+        print(expected)
+        print(response)
         self.assertEqual(response, expected)
 
     def test_set_data_courses_no_courses(self):
@@ -456,21 +488,14 @@ class TestCourseClassification(ModuleStoreTestCase):
                         'start':  str(self.course.start_date)
                     }},{'_id':'course-v1:eol+Test+2023','data': {
                         'id':'course-v1:eol+Test+2023','start':  str(self.course.start_date)}
-                        },])
+                        }], 'start',"","",False)
         today = timezone.now()
         expected = [
             {'id':str(self.course.id),'start':  str(self.course.start_date),
             'time_left':helpers.set_time_left(datetime.fromisoformat(str(self.course.start_date)), today),
             'course_state': 'ongoing_enrollable',
             'extra_data':{
-                'short_description' : None,
-                'advertised_start' : None, 
-                'display_org_with_default' : 'MCC1',
                 'invitation_only': False,
-                'main_classification':{
-                    'name':mcc1.name, 
-                    'logo':mcc1.logo.url 
-                },
                 'effort': None,
                 'self_paced': False,
                 'price': 'Free'
@@ -593,6 +618,109 @@ class TestCourseClassification(ModuleStoreTestCase):
             response = CourseClassificationView().get(request, org_id=1)
             self.assertIsInstance(response, HttpResponseRedirect)
             self.assertEqual(response.url, '/')
+    
+    def test_get_main_classifications_view(self):
+        """
+        Check if get_main_classifications_view works properly
+        """
+        request = TestRequest()
+        request.method = 'GET'
+        response = get_main_classifications_view(request)
+        response = json.loads(response.content.decode('utf-8'))
+        self.assertEqual(len(response), 0)
+        MainCourseClassification(
+            name="MCC1",
+            sequence=2,
+            visibility=2,
+            is_active=True
+            ).save()
+        MainCourseClassification(
+            name="MCC2",
+            sequence=1,
+            visibility=1,
+            is_active=True
+            ).save()
+        MainCourseClassification(
+            name="MCC3",
+            sequence=3,
+            visibility=2,
+            is_active=False
+            ).save()
+        MainCourseClassification(
+            name="MCC4",
+            sequence=4,
+            visibility=0,
+            is_active=True
+            ).save()
+        CourseClassification(
+            course_id = self.course.id,
+            MainClass = MainCourseClassification.objects.get(name="MCC1"),
+            is_featured_course = True
+        ).save()
+        expected = [{'id': 1, 'name': 'MCC1'}]
+        response = get_main_classifications_view(request)
+        response = json.loads(response.content.decode('utf-8'))
+        self.assertEqual(len(response), 1)
+        self.assertEqual(response, expected)
+
+    def test_get_course_categories_view(self):
+        """Check if get_course_categories_view works properly """
+        request = TestRequest()
+        request.method = 'GET'
+        response = get_course_categories_view(request)
+        response = json.loads(response.content.decode('utf-8'))
+        self.assertEqual(len(response), 0)
+        self.assertEqual(response, [])
+        MainCourseClassification(
+            name="MCC1",
+            sequence=1,
+            visibility=2,
+            is_active=True
+            ).save()
+        cc1 = CourseCategory(
+            name="CC1",
+            sequence=1,
+            show_opt=2
+            )
+        cc1.save()
+        cc2 = CourseCategory(
+            name="CC2",
+            sequence=2,
+            show_opt=1
+            )
+        cc2.save()
+        cc3 = CourseCategory(
+            name="CC3",
+            sequence=3,
+            show_opt=2
+            )
+        cc3.save()
+        cc4 = CourseCategory(
+            name="CC4",
+            sequence=4,
+            show_opt=0
+            )
+        cc4.save()
+        classification1 = CourseClassification(
+            course_id = self.course.id,
+            MainClass = MainCourseClassification.objects.get(name="MCC1"),
+            is_featured_course = True
+        )
+        classification1.save()
+        classification2 = CourseClassification(
+            course_id = self.course2.id,
+            MainClass = MainCourseClassification.objects.get(name="MCC1"),
+            is_featured_course = True
+        )
+        classification2.save()
+        classification1.course_category.add(cc2)
+        classification1.course_category.add(cc4)
+        classification2.course_category.add(cc1)
+        expected = [{'id': 1, 'name': 'CC1'}, {'id': 2, 'name': 'CC2'}]
+        response = get_course_categories_view(request)
+        response = json.loads(response.content.decode('utf-8'))    
+        self.assertEqual(len(response), 2)
+        self.assertEqual(response, expected)
 
 class DemoCourse:
     """ Class for dispensing demo courses """
@@ -712,12 +840,16 @@ class TestMockCourseDiscoverySearch(ModuleStoreTestCase, SearcherMixin):  # pyli
             'state': '',
             'classification': '',
             'page_size': '20',
-            'page_index': '0'
+            'current_page': '1',
+            'page_index': '0',
+            'only_free': False,
+            'min_price':'',
+            'max_price':''
         }
         response = course_discovery_eol(request)
         response = json.loads(response.content.decode('utf-8'))
         self.assertEqual(response["total"],3)
-    
+
     def test_utils_get_course_ctgs(self):
         """
             Test get_course_ctgs() normal process
