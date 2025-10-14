@@ -10,7 +10,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.test.client import RequestFactory
 from django.utils.translation import ugettext as _
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 from django.views.generic.base import View
 from eventtracking import tracker as track
 from search.views import _process_pagination_values
@@ -22,6 +22,7 @@ from common.djangoapps.util.json_request import JsonResponse
 # Internal project dependencies
 from .api import *
 from .models import MainCourseClassification, MainCourseClassificationTemplate
+from .helpers import get_all_course_categories, get_all_main_classifications
 
 logger = logging.getLogger(__name__)
    
@@ -176,3 +177,21 @@ def course_discovery_eol(request):
         )
 
     return JsonResponse(results, status=status_code)
+
+@require_GET
+def get_main_classifications_view(request):
+    """
+        View to obtain all active main classification that have courses
+    """
+    categories = get_all_main_classifications()
+    data = [{'id': c[0], 'name': c[1]} for c in categories]
+    return JsonResponse(data)
+
+@require_GET
+def get_course_categories_view(request):
+    """
+        View to obtain all active categories that have courses
+    """
+    categories = get_all_course_categories()
+    data = [{'id': c[0], 'name': c[1]} for c in categories]
+    return JsonResponse(data)
