@@ -9,6 +9,7 @@ from search.api import *
 
 # Edx dependencies
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 
 # Internal project dependencies
 from course_classification.helpers import get_courses_by_classification, set_data_courses, get_courses_by_category
@@ -17,7 +18,7 @@ from .models import CourseClassification
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
-def course_discovery_search_eol(search_term=None, size=20, from_=0, order_by="", year="", state="", classification="", category="", featured=""):
+def course_discovery_search_eol(search_term=None, size=200, from_=0, order_by="", year="", state="", classification="", category="", featured="", current_page=1):
     """
     Course Discovery activities against the search engine index of course details
     """
@@ -110,7 +111,13 @@ def course_discovery_search_eol(search_term=None, size=20, from_=0, order_by="",
         sort=sort
     )
     try:
-        results['results'] = set_data_courses(results['results'], sort)
+        page_size = int(configuration_helpers.get_value('EXPLORE_COURSES_PAGE_SIZE', 20))
+        courses_list = set_data_courses(results['results'], sort)
+        from_page=page_size*(current_page-1)
+        to_page=page_size*current_page
+        results['results'] = courses_list[from_page:to_page]
+        results['page_size'] = page_size
+
     except Exception as e:
         error = f'Course Discovery - Error in course_classification set_data_courses function, error: {format(str(e))}'
         log.error(error)
