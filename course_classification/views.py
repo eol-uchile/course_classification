@@ -18,6 +18,7 @@ import six
 
 # Edx dependencies
 from common.djangoapps.util.json_request import JsonResponse
+from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 
 # Internal project dependencies
 from .api import *
@@ -113,10 +114,12 @@ def course_discovery_eol(request):
     state = request.POST.get("state", "")
     cc = request.POST.get("classification", "")
     category = request.POST.get("category", "")
+    current_page = int(request.POST.get("current_page", 1))
     featured = bool(request.POST.get("featured", False))
 
     try:
         size, from_, page = _process_pagination_values(request)
+        size =  int(configuration_helpers.get_value('MAX_ELASTICSEARCH_PAGE_SIZE', 200))
 
         # Analytics - log search request
         track.emit(
@@ -131,13 +134,13 @@ def course_discovery_eol(request):
         results = course_discovery_search_eol(
             search_term=search_term,
             size=size,
-            from_=from_,
             order_by=order_by,
             year=year,
             state=state,
             classification=cc,
             category=category,
-            featured= featured
+            featured= featured,
+            current_page=current_page
         )
 
         # Analytics - log search results before sending to browser
