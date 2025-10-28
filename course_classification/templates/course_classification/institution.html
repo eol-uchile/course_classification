@@ -12,8 +12,8 @@
 <%namespace name='static' file='../static_content.html'/>
 <%block name="pagetitle">${institution_name}</%block>
 <link rel="stylesheet" type="text/css" href="${static.url('course_classification/css/main.css')}"/> 
-<main id="main" class="open-institutions mb-5" aria-label="Content" tabindex="-1">
-    <section class="container-fluid px-0 open-institutions-banner">
+<main id="main" class="open-institutions mb-5 d-block" aria-label="Content" tabindex="-1">
+    <section class="container-fluid px-0 open-institutions-banner max-course-container">
         <div class="container-center">
           <img src="${institution_banner}" class="mx-auto openuchile-header d-block">
         </div>
@@ -23,12 +23,12 @@
     ${HTML(institution_html)}
 
     %if (len(courses) > 0):
-    <section class="courses-container open-institutions-courses">
+    <section class="courses-container open-institutions-courses  max-course-container px-5">
         <div class="course-title-container">
             <h2 class="course-tittle-institution">${_("Courses").upper()}</h2>
             <div class="course-border"></div>
         </div>
-        <section class="courses-list" style="padding-top: 25px;">
+        <section class="courses-list max-course-container" style="padding-top: 25px;">
 
              <% displayed_courses = 0 %>
             %for course in courses:
