@@ -116,6 +116,13 @@ def course_discovery_eol(request):
     category = request.POST.get("category", "")
     current_page = int(request.POST.get("current_page", 1))
     featured = bool(request.POST.get("featured", False))
+    min_price = ""
+    max_price = ""
+    if request.POST.get("min_price", "") != "":
+        min_price = int(request.POST.get("min_price", 1))
+    if request.POST.get("max_price", "") != "":
+        max_price = int(request.POST.get("max_price", 1))
+    only_free = request.POST.get("only_free", "") == ("true")
 
     try:
         size, from_, page = _process_pagination_values(request)
@@ -140,7 +147,10 @@ def course_discovery_eol(request):
             classification=cc,
             category=category,
             featured= featured,
-            current_page=current_page
+            current_page=current_page,
+            min_price=min_price,
+            max_price=max_price,
+            only_free=only_free
         )
 
         # Analytics - log search results before sending to browser

@@ -18,7 +18,7 @@ from .models import CourseClassification
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
-def course_discovery_search_eol(search_term=None, size=200, from_=0, order_by="", year="", state="", classification="", category="", featured="", current_page=1):
+def course_discovery_search_eol(search_term=None, size=200, from_=0, order_by="", year="", state="", classification="", category="", featured="", current_page=1, min_price="", max_price="", only_free=""):
     """
     Course Discovery activities against the search engine index of course details
     """
@@ -112,10 +112,11 @@ def course_discovery_search_eol(search_term=None, size=200, from_=0, order_by=""
     )
     try:
         page_size = int(configuration_helpers.get_value('EXPLORE_COURSES_PAGE_SIZE', 20))
-        courses_list = set_data_courses(results['results'], sort)
+        courses_list = set_data_courses(results['results'], sort, min_price, max_price, only_free)
         from_page=page_size*(current_page-1)
         to_page=page_size*current_page
         results['results'] = courses_list[from_page:to_page]
+        results['total'] = len(courses_list)
         results['page_size'] = page_size
 
     except Exception as e:

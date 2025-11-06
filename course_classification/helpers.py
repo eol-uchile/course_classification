@@ -89,7 +89,36 @@ def get_courses_by_classification(org_id):
     course_ids = [x['course_id'] for x in courses]
     return course_ids
 
-def set_data_courses(courses, sort):
+def convert_number(x):
+    """
+        Return a clean number without '$' symbol or none
+    """
+    if isinstance(x, (int, float)):
+        return float(x)
+    try:
+        # remove $, commas, and spaces
+        cleaned = str(x).replace('$', '').replace(',', '').strip()
+        return float(cleaned)
+    except ValueError:
+        return None  # discard if it cannot be converted
+
+def price_filter(min_price, max_price, input_price):
+    """
+        Return if a course should be append depending on filter price
+    """
+    if (min_price != "") and max_price != "":
+        if(input_price >= min_price and input_price <= max_price):
+            return True
+    elif (min_price != ""):
+        if(input_price >= min_price):
+            return True
+    elif (max_price != ""):
+        if (input_price <= max_price):
+            return True
+    else:
+        return True
+     
+def set_data_courses(courses, sort, min_price, max_price, only_free):
     """
         [
             {
@@ -132,13 +161,18 @@ def set_data_courses(courses, sort):
             }
             new_course['time_left'] = set_time_left(datetime.fromisoformat(course_start), today)
             new_course['course_state']= set_course_state(new_course, today)
-            new_courses_data.append(new_course)
+            if only_free:
+                if course_price in ["Free", "Gratis", None]:
+                    new_courses_data.append(new_course)
+            else:
+                input_price = convert_number(course_price)
+                if(price_filter(min_price, max_price, input_price)):
+                    new_courses_data.append(new_course)
         except Exception as e:
             error = f'Course Discovery - Error in course_classification set_data_courses function course not found, error: {format(str(e))}'
             log.error(error)
     new_courses_data =  sorted(new_courses_data, key=lambda course: sort_by_state_and_start_date(course, sort)) 
     return new_courses_data
-
 def set_course_state(course, today):
     """
     Set course state to a course, using today date and resulting in one of this states:
