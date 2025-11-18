@@ -237,7 +237,7 @@ def sort_by_state_and_start_date(course, sort):
     state_order = map_order[course['course_state']]
     date_start = datetime.fromisoformat(course['start']).timestamp()
     if sort=='start':
-        return (state_order, -date_start)
-    else:
         return (state_order, date_start)
+    else:
+        return (state_order, -date_start)
 
