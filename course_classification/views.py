@@ -10,7 +10,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.test.client import RequestFactory
 from django.utils.translation import ugettext as _
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 from django.views.generic.base import View
 from eventtracking import tracker as track
 from search.views import _process_pagination_values
@@ -18,10 +18,12 @@ import six
 
 # Edx dependencies
 from common.djangoapps.util.json_request import JsonResponse
+from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 
 # Internal project dependencies
 from .api import *
 from .models import MainCourseClassification, MainCourseClassificationTemplate
+from .helpers import get_all_course_categories, get_all_main_classifications
 
 logger = logging.getLogger(__name__)
    
@@ -112,10 +114,19 @@ def course_discovery_eol(request):
     state = request.POST.get("state", "")
     cc = request.POST.get("classification", "")
     category = request.POST.get("category", "")
+    current_page = int(request.POST.get("current_page", 1))
     featured = bool(request.POST.get("featured", False))
+    min_price = ""
+    max_price = ""
+    if request.POST.get("min_price", "") != "":
+        min_price = int(request.POST.get("min_price", 1))
+    if request.POST.get("max_price", "") != "":
+        max_price = int(request.POST.get("max_price", 1))
+    only_free = request.POST.get("only_free", "") == ("true")
 
     try:
         size, from_, page = _process_pagination_values(request)
+        size =  int(configuration_helpers.get_value('MAX_ELASTICSEARCH_PAGE_SIZE', 200))
 
         # Analytics - log search request
         track.emit(
@@ -130,13 +141,16 @@ def course_discovery_eol(request):
         results = course_discovery_search_eol(
             search_term=search_term,
             size=size,
-            from_=from_,
             order_by=order_by,
             year=year,
             state=state,
             classification=cc,
             category=category,
-            featured= featured
+            featured= featured,
+            current_page=current_page,
+            min_price=min_price,
+            max_price=max_price,
+            only_free=only_free
         )
 
         # Analytics - log search results before sending to browser
@@ -176,3 +190,21 @@ def course_discovery_eol(request):
         )
 
     return JsonResponse(results, status=status_code)
+
+@require_GET
+def get_main_classifications_view(request):
+    """
+        View to obtain all active main classification that have courses
+    """
+    categories = get_all_main_classifications()
+    data = [{'id': c[0], 'name': c[1]} for c in categories]
+    return JsonResponse(data)
+
+@require_GET
+def get_course_categories_view(request):
+    """
+        View to obtain all active categories that have courses
+    """
+    categories = get_all_course_categories()
+    data = [{'id': c[0], 'name': c[1]} for c in categories]
+    return JsonResponse(data)
