@@ -4,7 +4,8 @@ import logging
 
 # Installed packages (via pip)
 from django.test.client import RequestFactory
-
+from .models import CourseCategory
+from .helpers import get_courses_by_category
 # Internal project dependencies
 from .views import course_discovery_eol
 
@@ -58,3 +59,20 @@ def get_courses_filtered_by_course_state(course_state_list):
         if course["course_state"] in course_state_list:
             courses_filtered.append(course)
     return courses_filtered
+
+def get_all_categories_and_its_courses(courses):
+    """
+        Return all categories and its courses
+    """
+    ret_courses = {}
+    categories = []
+    for category in CourseCategory.objects.all().order_by('sequence'):
+        categories.append({'id':category.id,'name':category.name,'seq':category.sequence,'show_opt':category.show_opt})
+        ret_courses[category.id] = {'id':category.id,'name':category.name,'seq':category.sequence,'courses':[]}
+        courses_ids = get_courses_by_category(category.id)
+        courses_by_category=[]
+        for course in courses:
+            if course.pk in courses_ids:
+                courses_by_category.append(course)
+        ret_courses[category.id]['courses'] = courses_by_category
+    return categories, ret_courses
