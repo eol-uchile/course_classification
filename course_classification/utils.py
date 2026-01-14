@@ -4,7 +4,7 @@ import logging
 
 # Installed packages (via pip)
 from django.test.client import RequestFactory
-from .models import CourseCategory, CourseClassification
+from .models import CourseCategory
 from .helpers import get_courses_by_category
 # Internal project dependencies
 from .views import course_discovery_eol
