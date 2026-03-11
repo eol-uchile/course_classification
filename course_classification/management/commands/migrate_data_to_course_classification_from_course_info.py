@@ -33,18 +33,14 @@ def import_course_classification( dry_run=True ):
         else:
             current_course_category += 1
     try:
-        with transaction.atomic():
-            CourseClassification.objects.bulk_create(new_course_classifications, ignore_conflicts=True)
-
-            for cc in old_course_classification:
-                course_classification = CourseClassification.objects.get(
-                        course_id = cc.course_id
-                    )
-                category = CourseCategory.objects.get(name=cc.MainClass.name)
-                course_classification.course_category.add(category)
-            if  dry_run:
-                transaction.set_rollback(True)
-            return len(old_course_classification), current_course_category, len(new_course_classifications)
+        CourseClassification.objects.bulk_create(new_course_classifications, ignore_conflicts=True)
+        for cc in old_course_classification:
+            course_classification = CourseClassification.objects.get(
+                    course_id = cc.course_id
+                )
+            category = CourseCategory.objects.get(name=cc.MainClass.name)
+            course_classification.course_category.add(category)
+        return len(old_course_classification), current_course_category, len(new_course_classifications)
     except Exception as e:
         logger.error(f'Exception happens: {e}')
         # Raise exception
@@ -74,10 +70,7 @@ def import_categories( dry_run=True ):
         else:
             current_categories += 1
     try:
-        with transaction.atomic():
-            CourseCategory.objects.bulk_create(new_categories, ignore_conflicts=True)
-            if  dry_run:
-                transaction.set_rollback(True)
+        CourseCategory.objects.bulk_create(new_categories, ignore_conflicts=True)
         return len(old_categories), current_categories, len(new_categories)
     except Exception as e:
         logger.error(f'Exception happens: {e}')
@@ -105,59 +98,44 @@ class Command(BaseCommand):
             raise
 
         dry_run = options['dry_run']
-        
-        try:
-            import_result = import_categories( dry_run )
+        with transaction.atomic():
+            try:
+                category_import_result = import_categories( dry_run )
+                course_classification_import_result = import_course_classification( dry_run)
+                if  dry_run:
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"""
+                                This is a dry_run
+                                
+                                A total of {category_import_result[0]} category objects were found.
+                                A total of {category_import_result[1]} objects already exist in CourseCategory model.
+                                A total of {category_import_result[2]} objects could be copied to the CourseCategory model.
+
+                                A total of {course_classification_import_result[0]} old course_classification objects were found.
+                                A total of {course_classification_import_result[1]} objects already exist in CourseClassification model.
+                                A total of {course_classification_import_result[2]} objects could be copied to the CourseClassification model.
+                            """
+                        )
+                    )
+                else:
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"""
+                                A total of {category_import_result[0]} category objects were found.
+                                A total of {category_import_result[1]} objects already exist in CourseCategory model.
+                                A total of {category_import_result[2]} objects have been copied to CourseCategory model
+
+                                A total of {course_classification_import_result[0]} old course_classification objects were found.
+                                A total of {course_classification_import_result[1]} objects already exist in CourseClassification model.
+                                A total of {course_classification_import_result[2]} objects have been copied to the CourseClassification model.
+                            """
+                        )
+                    )
+            except Exception as e:
+                transaction.set_rollback(True)
+                logger.error(f'Exception happens: {e}')
+                # Raise exception
+                raise Exception(f"Error while copying categories {e}")
             if  dry_run:
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        f"""
-                            This is a dry_run
-                            A total of {import_result[0]} objects were found.
-                            A total of {import_result[1]} objects already exist in CourseCategory model.
-                            A total of {import_result[2]} objects could be copied to the CourseCategory model.
-                        """
-                    )
-                )
-            else:
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        f"""
-                            A total of {import_result[0]} objects were found.
-                            A total of {import_result[1]} objects already exist in CourseCategory model.
-                            A total of {import_result[2]} objects have been copied to CourseCategory model
-                        """
-                    )
-                )
-        except Exception as e:
-            logger.error(f'Exception happens: {e}')
-            # Raise exception
-            raise Exception(f"Error while copying categories {e}")
-        
-        try:
-            import_result = import_course_classification( dry_run)
-            if  dry_run:
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        f"""
-                            This is a dry_run
-                            A total of {import_result[0]} objects were found.
-                            A total of {import_result[1]} objects already exist in CourseClassification model.
-                            A total of {import_result[2]} objects could be copied to the CourseClassification model.
-                        """
-                    )
-                )
-            else:
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        f"""
-                            A total of {import_result[0]} objects were found.
-                            A total of {import_result[1]} objects already exist in CourseClassification model.
-                            A total of {import_result[2]} objects have been copied to the CourseClassification model.
-                        """
-                    )
-                )
-        except Exception as e:
-            logger.error(f'Exception happens: {e}')
-            # Raise exception
-            raise Exception(f"Error while copying course_classification {e}")
+                transaction.set_rollback(True)
