@@ -717,6 +717,57 @@ class TestCourseClassification(ModuleStoreTestCase):
         self.assertEqual(len(response), 2)
         self.assertEqual(response, expected)
 
+    def test_utils_get_all_categories_and_its_course(self):
+        """
+            Test get_all_categories_and_its_courses() with normal process
+        """
+        cc1 = CourseCategory(
+            name="CC1",
+            sequence=1,
+            show_opt=2
+            )
+        cc1.save()
+        cc2 = CourseCategory(
+            name="CC2",
+            sequence=2,
+            show_opt=1
+            )
+        cc2.save()
+        cc3 = CourseCategory(
+            name="CC3",
+            sequence=3,
+            show_opt=2
+            )
+        cc3.save()
+        cc4 = CourseCategory(
+            name="CC4",
+            sequence=4,
+            show_opt=0
+            )
+        cc4.save()
+        course = self.course
+        course.pk = self.course.id
+        course_classification = CourseClassification.objects.create(
+            course_id = self.course.id
+        )
+        category = CourseCategory.objects.get(name="CC1")
+        course_classification.course_category.add(category)
+        response = utils.get_all_categories_and_its_courses([course])
+        list_of_categories = [
+            {'id': 1, 'name': 'CC1', 'seq': 1, 'show_opt': 2}, 
+            {'id': 2, 'name': 'CC2', 'seq': 2, 'show_opt': 1}, 
+            {'id': 3, 'name': 'CC3', 'seq': 3, 'show_opt': 2}, 
+            {'id': 4, 'name': 'CC4', 'seq': 4, 'show_opt': 0}]
+        self.assertEqual(response[0], list_of_categories)
+
+        list_categories_with_courses = {
+            1: {'id': 1, 'name': 'CC1', 'seq': 1, 'courses': [self.course]}, 
+            2: {'id': 2, 'name': 'CC2', 'seq': 2, 'courses': []},
+            3: {'id': 3, 'name': 'CC3', 'seq': 3, 'courses': []},
+            4: {'id': 4, 'name': 'CC4', 'seq': 4, 'courses': []}
+            }
+        self.assertEqual(response[1], list_categories_with_courses)
+
 class DemoCourse:
     """ Class for dispensing demo courses """
     DEMO_COURSE_ID = "edX/DemoX/Demo_Course"
