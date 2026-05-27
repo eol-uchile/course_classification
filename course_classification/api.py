@@ -2,8 +2,10 @@
 # Python Standard Libraries
 import datetime
 import logging
+from dateutil.relativedelta import relativedelta
 
 # Installed packages (via pip)
+from django.conf import settings
 from django.db.models import Q
 from search.api import *
 
@@ -38,8 +40,13 @@ def course_discovery_search_eol(search_term=None, size=200, from_=0, order_by=""
         sort = "start:desc"
     if order_by == "older":
         sort = "start"
+    today = datetime.utcnow()
+    start_initial_year = int(configuration_helpers.get_value('COURSE_SEARCH_INITIAL_YEAR',getattr(settings, 'COURSE_SEARCH_INITIAL_YEAR', 2020)))
+    time_horizon = int(configuration_helpers.get_value('COURSE_SEARCH_FUTURE_TIME_HORIZON',getattr(settings, 'COURSE_SEARCH_FUTURE_TIME_HORIZON', 262080)))
+    future_end_year = today + relativedelta(minutes=+time_horizon)
+    possible_years = list(range(start_initial_year, future_end_year.year + 1))
     # Check if year exist and test if is it numeric
-    if year != "" and year.isnumeric():
+    if year != "" and year.isnumeric() and year in possible_years:
         year_int = int(year)
         # Check if the start date range between January 1 and December 31 of a year
         query &= Q(start__range = (datetime(year_int, 1, 1), datetime(year_int, 12, 31)))

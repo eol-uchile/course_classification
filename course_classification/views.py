@@ -6,6 +6,7 @@ import json
 import logging
 
 # Installed packages (via pip)
+from django.conf import settings
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.test.client import RequestFactory
@@ -207,4 +208,14 @@ def get_course_categories_view(request):
     """
     categories = get_all_course_categories()
     data = [{'id': c[0], 'name': c[1]} for c in categories]
+    return JsonResponse(data)
+
+@require_GET
+def get_initial_settings(request):
+    """
+        View to obtain initial date data
+    """
+    initial_year = int(configuration_helpers.get_value('COURSE_SEARCH_INITIAL_YEAR',getattr(settings, 'COURSE_SEARCH_INITIAL_YEAR', 2020)))
+    time_horizon = int(configuration_helpers.get_value('COURSE_SEARCH_FUTURE_TIME_HORIZON',getattr(settings, 'COURSE_SEARCH_FUTURE_TIME_HORIZON', 262080)))
+    data = {'initial_year': initial_year, 'time_horizon': time_horizon} 
     return JsonResponse(data)
