@@ -114,7 +114,6 @@ def course_discovery_search_eol(search_term=None, size=200, from_=0, order_by=""
         field_dictionary=use_field_dictionary,
         filter_dictionary=filter_dictionary,
         exclude_dictionary=exclude_dictionary,
-        facet_terms=course_discovery_facets(),
         sort=sort
     )
     try:
@@ -133,3 +132,13 @@ def course_discovery_search_eol(search_term=None, size=200, from_=0, order_by=""
         results['results'] = []
         return results
     return results
+
+
+class QueryParseError(Exception):
+    """QueryParseError will be thrown if the query is malformed.
+
+    If a query has mismatched quotes (e.g. '"some phrase', return a
+    more specific exception so the view can provide a more helpful
+    error message to the user.
+
+    """
