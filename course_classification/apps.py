@@ -12,7 +12,7 @@ class CourseClassificationConfig(AppConfig):
     plugin_app = {
         PluginURLs.CONFIG: {
             ProjectType.LMS: {
-                PluginURLs.NAMESPACE: 'course_classification',
+                PluginURLs.NAMESPACE: '',
                 PluginURLs.REGEX: r'^',
                 PluginURLs.RELATIVE_PATH: 'urls',
             },

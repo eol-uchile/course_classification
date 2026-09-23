@@ -160,7 +160,7 @@ class TestCourseClassification(ModuleStoreTestCase):
             template="hello world",
             language="en"
         ).save()
-        expected = [["/static/uploads/course_classification_assets/1/test.png", reverse('course_classification:institution', kwargs={'org_id':1})]]
+        expected = [["/static/uploads/course_classification_assets/1/test.png", reverse('institution', kwargs={'org_id':1})]]
         response = helpers.get_all_logos()
         self.assertEqual(len(response), 1)
         self.assertEqual(response, expected)
@@ -505,7 +505,7 @@ class TestCourseClassification(ModuleStoreTestCase):
         """
         # main classification does not exists
         self.client.cookies.load({'openedx-language-preference': "en"})
-        result = self.client.get(reverse('course_classification:institution', kwargs={'org_id':1}))
+        result = self.client.get(reverse('institution', kwargs={'org_id':1}))
         request = urllib.parse.urlparse(result.url)
         self.assertEqual(result.status_code, 302)
         self.assertEqual(request.path, '/')
@@ -536,20 +536,20 @@ class TestCourseClassification(ModuleStoreTestCase):
             language="es_419"
         ).save()
         self.client.cookies.load({'openedx-language-preference': "en"})
-        result = self.client.get(reverse('course_classification:institution', kwargs={'org_id':mcc1.id}))
+        result = self.client.get(reverse('institution', kwargs={'org_id':mcc1.id}))
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.request['PATH_INFO'], '/institutions/1/')
         self.assertTrue('hello world' in result._container[0].decode())
 
         self.client.cookies.load({'openedx-language-preference': "es-419"})
-        result = self.client.get(reverse('course_classification:institution', kwargs={'org_id':mcc1.id}))
+        result = self.client.get(reverse('institution', kwargs={'org_id':mcc1.id}))
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.request['PATH_INFO'], '/institutions/1/')
         self.assertTrue('hola mundo' in result._container[0].decode())
 
         # main classification does not have language template
         self.client.cookies.load({'openedx-language-preference': "fr"})
-        result = self.client.get(reverse('course_classification:institution', kwargs={'org_id':mcc1.id}))
+        result = self.client.get(reverse('institution', kwargs={'org_id':mcc1.id}))
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.request['PATH_INFO'], '/institutions/1/')
         self.assertTrue('hello world' in result._container[0].decode())
@@ -570,7 +570,7 @@ class TestCourseClassification(ModuleStoreTestCase):
             )
         mcc2.save()
         self.client.cookies.load({'openedx-language-preference': "en"})
-        result = self.client.get(reverse('course_classification:institution', kwargs={'org_id':mcc2.id}))
+        result = self.client.get(reverse('institution', kwargs={'org_id':mcc2.id}))
         request = urllib.parse.urlparse(result.url)
         self.assertEqual(result.status_code, 302)
         self.assertEqual(request.path, '/')
@@ -596,7 +596,7 @@ class TestCourseClassification(ModuleStoreTestCase):
             language="en"
         ).save()
         self.client.cookies.load({'openedx-language-preference': "en"})
-        result = self.client.get(reverse('course_classification:institution', kwargs={'org_id':mcc3.id}))
+        result = self.client.get(reverse('institution', kwargs={'org_id':mcc3.id}))
         request = urllib.parse.urlparse(result.url)
         self.assertEqual(result.status_code, 302)
         self.assertEqual(request.path, '/')
