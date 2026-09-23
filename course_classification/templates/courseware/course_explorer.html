@@ -1,0 +1,218 @@
+<%page expression_filter="h"/>
+<%!
+  from django.utils.translation import ugettext as _
+  from datetime import datetime, timedelta
+  from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+  from openedx.core.djangoapps.theming import helpers as theming_helpers
+%>
+<%inherit file="../main.html" />
+<%
+  course_discovery_enabled = settings.FEATURES.get('ENABLE_DASHBOARD_SEARCH')
+%>
+
+<%namespace name='static' file='../static_content.html'/>
+
+% if course_discovery_enabled:
+<%block name="header_extras">
+</%block>
+% endif
+<%block name="js_extra">
+ 
+<%block name="pagetitle">${_("Course explorer")}</%block>
+<%
+  use_year_filter = configuration_helpers.get_value('USE_YEAR_FILTER', False)
+%>
+<script>
+  function show_default_image() {
+    return "${static.url(theming_helpers.get_current_site_theme().theme_dir_name+'/images/default-course.png')}";
+  }
+  window.themeAsset = (path) =>
+    "${static.url('course_classification/')}/" + path;
+</script>
+ <script type="text/javascript" src="${static.url('course_classification/js/course_explorer.js')}"></script>
+  <script type="text/javascript" src="${static.url('course_classification/pagination/jquery.twbsPagination.js')}"></script>
+<link rel="stylesheet" type="text/css" href="${static.url('course_classification/css/course_explorer.css')}"/> 
+<main id="main" aria-label="Content" tabindex="-1">
+  <section class="courses-list w-100">
+    <div class="row m-0">
+      <div class="col-12 col-sm-12 col-md-12 col-xl-3 filter-bar" id="filter-bar">
+        <aside aria-label="${_('Refine your search')}" class="search-facets phone-menu pl-5">
+          <div class="d-flex justify-content-end"> 
+             <button type="button" class="btn-advanced-open border-0 p-0" id="advance-button"> <span class="icon fa fa-times" aria-hidden="true"></span> </button> 
+          </div>
+          <div class="row p-0 m-0">
+            <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 p-0 align-content-center m-0"> 
+              <h2 class="header-search-facets refine-search align-content-center m-0">${_('Refine your search')}</h2>
+            </div>
+          </div>
+          <h2 class="header-search-facets" id="discovery-message"></h2>
+          <section class="search-facets-lists">
+            <div class="accordion" id="accordion">
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="headingOrder">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOrder" aria-expanded="true" aria-controls="collapseOrder">
+                   ${_('Order')}
+                  </button>
+                </h2>
+                <div id="collapseOrder" class="accordion-collapse collapse" aria-labelledby="headingOrder" data-bs-parent="#accordionExample">
+                  <div class="accordion-body">
+                    <label class="list-group-item d-flex" >
+                      <input class="form-check-input me-1" type="radio" value="newer" data-facet="order_by" data-value="newer" data-text="${_('Newer')}">
+                      ${_('Newer')}
+                    </label>
+                    <label class="list-group-item d-flex" >
+                      <input class="form-check-input me-1" type="radio" value="older" data-facet="order_by" data-value="older" data-text="${_('Older')}">
+                      ${_('Older')}
+                    </label>
+                  </div>
+                </div>
+              </div>
+              % if use_year_filter == "True":
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="headingYear">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseYear" aria-expanded="false" aria-controls="collapseYear">
+                      ${_('Year')}
+                      <p id="year-filter" class="number-filter"></p>
+                    </button>
+                  </h2>
+                  <div id="collapseYear" class="accordion-collapse collapse" aria-labelledby="headingYear" data-bs-parent="#accordionExample">
+                    <div class="accordion-body">
+                      <div id="years"></div>
+                    </div>
+                  </div>
+                </div>
+              % endif
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="headingState">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseState" aria-expanded="false" aria-controls="collapseState">
+                    ${_('State')}
+                    <p id="state-filter" class="number-filter"></p>
+                  </button>
+                </h2>
+                <div id="collapseState" class="accordion-collapse collapse" aria-labelledby="headingState" data-bs-parent="#accordionExample">
+                  <div class="accordion-body">
+                    <label class="list-group-item d-flex" >
+                      <input class="form-check-input me-1" type="checkbox" value="active" data-facet="state" data-value="active" data-text="${_('Active')}">
+                      ${_('Active')}
+                    </label>
+                    <label class="list-group-item d-flex" >
+                      <input class="form-check-input me-1" type="checkbox" value="finished" data-facet="state" data-value="finished" data-text="${_('Finished')}">
+                      ${_('Finished')}
+                    </label>
+                    <label class="list-group-item d-flex" >
+                      <input class="form-check-input me-1" type="checkbox" value="coming_soon" data-facet="state" data-value="coming_soon" data-text="${_('Coming soon')}">
+                      ${_('Coming soon')}
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="headingOrganizations">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOrganizations" aria-expanded="false" aria-controls="collapseOrganizations">
+                     ${_('Organizations')}
+                     <p id="classification-filter" class="number-filter"></p>
+                  </button>
+                </h2>
+                <div id="collapseOrganizations" class="accordion-collapse collapse" aria-labelledby="headingOrganizations" data-bs-parent="#accordionExample">
+                  <div class="accordion-body">
+                    <div  id="organizations"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="headingCategories">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
+                    ${_('Categories')}
+                    <p id="category-filter" class="number-filter"></p>
+                  </button>
+                </h2>
+                <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#accordionExample">
+                  <div class="accordion-body">
+                      <div  id="categories"></div>
+                   </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="headingPriceRange">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCategories" aria-expanded="false" aria-controls="collapseCategories">
+                    ${_('Price range')}
+                    <p id="price-filter" class="number-filter">3</p>
+                  </button>
+                </h2>
+                <div id="collapseCategories" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#accordionExample">
+                  <div class="accordion-body">
+                    <div class="price-inputs d-flex justify-content-between">
+                      <div class="input-group d-flex flex-column">
+                        <label for="min-input">${_('From')}</label>
+                        <input type="number" class="form-control w-75" id="min-input"  value="" min="0" step="any" pattern="\d*" placeholder="Min. CLP">
+                      </div>
+                      <div class="input-group d-flex flex-column">
+                        <label for="max-input">${_('To')}</label>
+                        <input type="number" class="form-control w-75" id="max-input" value="" min="0" step="any" pattern="\d*" placeholder="Max. CLP"/>
+                      </div>
+                    </div>
+                    <div class="form-check form-switch my-4 p-0 d-flex align-items-center">
+                      <input class="form-check-input me-1" type="checkbox" role="switch" id="freeCourses">
+                      <label class="form-check-label m-0 ml-3" for="freeCursesCheckbox">${_('Show free courses only')}</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <label for="prices" class="form-label"> </label>
+             <div class="mt-3 d-flex justify-content-between">
+              <a id="clear-filters" class="d-flex justify-content-center p-1 m-0 align-items-center" href="#"><button class="filter-buttons">${_('Clear Filters')}</button></a>
+              <a id="apply-filters" class="d-flex justify-content-center p-1 m-0 align-items-center" href="#"><button class="filter-buttons d-flex  align-items-center">${_('Apply Filters')} <p id="total-filter"></p></button></a>
+            </div>
+          </section>
+      </div>
+      <div class="col-12 col-sm-12 col-md-12 col-xl-9 p-0" id="section-courses">
+        <section>
+          <div class="search-container py-5">
+            <div class=" row m-0 p-2 w-100">
+              <div class="col-sm-12 col-md-12 col-lg-12 col-xl-9 search-bar align-content-center">
+                <div class="row m-0 p-0 w-100 align-content-center">
+                  <div class="col-sm-12 col-md-12 col-lg-12 col-xl-9 m-0 p-0">
+                    <button class="courses-search-btn" for="discovery-input" id="discovery-submit">
+                      <span class="icon fa fa-search fa-1" aria-hidden="true"></span>
+                    </button>
+                    <label for="discovery-input" class="sr">${_('Search for a course')}</label>
+                    <input id="discovery-input" class="discovery-input" placeholder="${_('Search for a course')}" type="text"/>
+                    <div class="vr h-100 d-xl-inline-block d-none"></div>
+                  </div>
+                  <div class="col-sm-12 col-md-12 col-lg-12 col-xl-3 m-0 p-0">
+                    <select class="form-select border-0" id="order-select" data-facet="order" class="form-check-input">
+                      <option value="newer" data-value="newer" data-text="${_('Newer')}"> ${_('Newer')}</option>
+                      <option value="older" data-value="older" data-text="${_('Older')}"> ${_('Older')}</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="ccol-sm-12 col-md-12 col-lg-12 col-xl-3 align-content-center advance-button-container p-0 py-2  py-xl-0">
+                <button type="button" class="btn-advanced-open" id="advance-button"><span class="icon fa fa-filter" aria-hidden="true"></span> ${_('Advanced')}</button>
+              </div>
+            </div>
+          </div>
+          <div class="d-flex justify-content-center m-0 p-0 pb-5 trending-course-title-container">
+            <h2 class="m-0 p-0" id="all_courses"><b>${_('All courses')}</b></h2>
+            <div class="explorer-courses-border"></div>
+          </div>
+        </section>
+        <div id="loadingCircles">
+          <div class="f_circleG" id="frotateG_01"></div>
+          <div class="f_circleG" id="frotateG_02"></div>
+          <div class="f_circleG" id="frotateG_03"></div>
+          <div class="f_circleG" id="frotateG_04"></div>
+          <div class="f_circleG" id="frotateG_05"></div>
+          <div class="f_circleG" id="frotateG_06"></div>
+          <div class="f_circleG" id="frotateG_07"></div>
+          <div class="f_circleG" id="frotateG_08"></div>
+        </div>
+        <div id="list-courses"></div>
+        <div class=" d-flex justify-content-center">
+          <ul id="pagination-explorer" class="pagination pagination-explorer-class"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>

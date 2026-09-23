@@ -59,6 +59,16 @@ The value is expressed in seconds.
 COURSE_SEARCH_FUTURE_TIME_HORIZON = 262080  # approximately 6 months
 ```
 
+### `USE_YEAR_FILTER`
+
+Use to show or not Year in course explorer.
+
+**Default value:** `True` (approximately 6 months)
+
+```python
+USE_YEAR_FILTER = True 
+```
+
 ## TESTS
 **Prepare tests:**
 
