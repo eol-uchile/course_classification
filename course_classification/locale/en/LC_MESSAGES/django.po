@@ -1,0 +1,221 @@
+# English translations for eol-vimeo.
+# Copyright (C) 2026 Oficina EOL
+# This file is distributed under the same license as the eol-vimeo project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: eol-vimeo 1.0.0\n"
+"Report-Msgid-Bugs-To: eol-ing@uchile.cl\n"
+"POT-Creation-Date: 2026-09-30 18:20+0000\n"
+"PO-Revision-Date: 2026-09-25 18:38+0000\n"
+"Last-Translator: Oficina EOL <eol-ing@uchile.cl>\n"
+"Language: en\n"
+"Language-Team: en <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: course_classification/models.py:30 course_classification/models.py:68
+msgid "name"
+msgstr "nombre"
+
+#: course_classification/models.py:34
+msgid "Banner file. 500 px height"
+msgstr ""
+
+#: course_classification/models.py:40
+msgid "Logo file. 145 px height"
+msgstr ""
+
+#: course_classification/models.py:43 course_classification/models.py:69
+msgid "sequence"
+msgstr ""
+
+#: course_classification/models.py:44
+msgid "Show: True, Hide: False"
+msgstr ""
+
+#: course_classification/models.py:45
+msgid "Mostrar en"
+msgstr ""
+
+#: course_classification/models.py:70
+msgid "Mostrar"
+msgstr ""
+
+#: course_classification/models.py:92
+msgid "Django template HTML."
+msgstr ""
+
+#: course_classification/models.py:104
+msgid "course"
+msgstr ""
+
+#: course_classification/models.py:107
+msgid "if the course is featured"
+msgstr ""
+
+#: course_classification/views.py:108
+msgid "Nothing to search"
+msgstr ""
+
+#: course_classification/views.py:178
+msgid "Your query seems malformed. Check for unmatched quotes."
+msgstr ""
+
+#: course_classification/views.py:184
+#, python-brace-format
+msgid "An error occurred when searching for \"{search_string} {err}\""
+msgstr ""
+
+#: course_classification/templates/new_courses.html:13
+msgid "New Courses"
+msgstr ""
+
+#: course_classification/templates/new_courses.html:38
+msgid "See more courses"
+msgstr ""
+
+#: course_classification/templates/new_courses.html:42
+#: course_classification/templates/top_courses.html:24
+msgid "There are no courses"
+msgstr ""
+
+#: course_classification/templates/top_courses.html:9
+msgid "Top Courses"
+msgstr ""
+
+#: course_classification/templates/course_classification/course.html:59
+msgid "Classes Start"
+msgstr ""
+
+#: course_classification/templates/course_classification/course.html:78
+msgid "Pacing"
+msgstr ""
+
+#: course_classification/templates/course_classification/course.html:80
+msgid "Student paced"
+msgstr ""
+
+#: course_classification/templates/course_classification/course.html:82
+msgid "Instructor paced"
+msgstr ""
+
+#: course_classification/templates/course_classification/course.html:99
+msgid "Price"
+msgstr ""
+
+#: course_classification/templates/course_classification/course.html:123
+msgid "Duration"
+msgstr ""
+
+#: course_classification/templates/course_classification/course.html:134
+msgid "Enroll now"
+msgstr ""
+
+#: course_classification/templates/course_classification/course.html:136
+#: course_classification/templates/courseware/course_explorer.html:90
+#: course_classification/templates/courseware/course_explorer.html:91
+msgid "Coming soon"
+msgstr ""
+
+#: course_classification/templates/course_classification/course.html:138
+#: course_classification/templates/course_classification/course.html:142
+msgid "See more"
+msgstr ""
+
+#: course_classification/templates/course_classification/course.html:140
+#: course_classification/templates/courseware/course_explorer.html:86
+#: course_classification/templates/courseware/course_explorer.html:87
+msgid "Finished"
+msgstr ""
+
+#: course_classification/templates/course_classification/institution.html:28
+msgid "Courses"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:26
+#: course_classification/templates/courseware/course_explorer.html:32
+msgid "Refine your search"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:41
+msgid "Order"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:47
+#: course_classification/templates/courseware/course_explorer.html:48
+#: course_classification/templates/courseware/course_explorer.html:172
+msgid "Newer"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:51
+#: course_classification/templates/courseware/course_explorer.html:52
+#: course_classification/templates/courseware/course_explorer.html:173
+msgid "Older"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:61
+msgid "Year"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:75
+msgid "State"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:82
+#: course_classification/templates/courseware/course_explorer.html:83
+msgid "Active"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:99
+msgid "Organizations"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:112
+msgid "Categories"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:125
+msgid "Price range"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:133
+msgid "From"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:137
+msgid "To"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:143
+msgid "Show free courses only"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:151
+msgid "Clear Filters"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:152
+msgid "Apply Filters"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:166
+#: course_classification/templates/courseware/course_explorer.html:167
+msgid "Search for a course"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:179
+msgid "Advanced"
+msgstr ""
+
+#: course_classification/templates/courseware/course_explorer.html:184
+msgid "All courses"
+msgstr ""
+
+#~ msgid "Course explorer"
+#~ msgstr ""
+
