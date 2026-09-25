@@ -12,12 +12,7 @@
 
 <%namespace name='static' file='../static_content.html'/>
 
-% if course_discovery_enabled:
-<%block name="header_extras">
-</%block>
-% endif
-<%block name="js_extra">
- 
+
 <%block name="pagetitle">${_("Course explorer")}</%block>
 <%
   use_year_filter = configuration_helpers.get_value('USE_YEAR_FILTER', False)
