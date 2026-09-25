@@ -1,0 +1,100 @@
+# Spanish (Latin America) translations for eol-vimeo.
+# Copyright (C) 2026 Oficina EOL
+# This file is distributed under the same license as the eol-vimeo project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: eol-vimeo 1.0.0\n"
+"Report-Msgid-Bugs-To: eol-ing@uchile.cl\n"
+"POT-Creation-Date: 2026-09-25 19:03+0000\n"
+"PO-Revision-Date: 2026-09-25 18:38+0000\n"
+"Last-Translator: Oficina EOL <eol-ing@uchile.cl>\n"
+"Language: es_419\n"
+"Language-Team: es_419 <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: course_classification/static/course_classification/js/course_explorer.js:117
+#: course_classification/static/course_classification/js/course_explorer.js:118
+msgid "ERROR loading initial settings"
+msgstr "ERROR al cargar los valores iniciales"
+
+#: course_classification/static/course_classification/js/course_explorer.js:135
+#: course_classification/static/course_classification/js/course_explorer.js:136
+msgid "ERROR loading organizations"
+msgstr "Error al cargar las organizaciones"
+
+#: course_classification/static/course_classification/js/course_explorer.js:153
+#: course_classification/static/course_classification/js/course_explorer.js:154
+msgid "ERROR loading categories"
+msgstr "Error al cargar las categorías"
+
+#: course_classification/static/course_classification/js/course_explorer.js:323
+#: course_classification/static/course_classification/js/course_explorer.js:359
+msgid "No results were found for your search"
+msgstr "No se encontraron resultados en tu búsqueda"
+
+#: course_classification/static/course_classification/js/course_explorer.js:349
+msgid "Showing"
+msgstr "Mostrando"
+
+#: course_classification/static/course_classification/js/course_explorer.js:349
+msgid "out of"
+msgstr "de"
+
+#: course_classification/static/course_classification/js/course_explorer.js:349
+msgid "courses"
+msgstr "cursos"
+
+#: course_classification/static/course_classification/js/course_explorer.js:351
+msgid "Showing 0 courses"
+msgstr "Mostrando 0 cursos"
+
+#: course_classification/static/course_classification/js/course_explorer.js:513
+msgid "Enroll now"
+msgstr "Inscríbete aquí"
+
+#: course_classification/static/course_classification/js/course_explorer.js:515
+msgid "Coming soon"
+msgstr "Próximamente"
+
+#: course_classification/static/course_classification/js/course_explorer.js:517
+msgid "See more"
+msgstr "Aprender más"
+
+#: course_classification/static/course_classification/js/course_explorer.js:519
+msgid "Finished"
+msgstr "Finalizado"
+
+#: course_classification/static/course_classification/js/course_explorer.js:569
+msgid "Duration"
+msgstr "Duración"
+
+#: course_classification/static/course_classification/js/course_explorer.js:594
+msgid "Classes Start"
+msgstr "Inicio de clases"
+
+#: course_classification/static/course_classification/js/course_explorer.js:609
+msgid "Pacing"
+msgstr "Modalidad"
+
+#: course_classification/static/course_classification/js/course_explorer.js:626
+msgid "Price"
+msgstr "Precio"
+
+#: course_classification/static/course_classification/js/course_explorer.js:644
+msgid "Free"
+msgstr "Gratis"
+
+#: course_classification/static/course_classification/js/course_explorer.js:649
+msgid "Student paced"
+msgstr "Ritmo estudiante"
+
+#: course_classification/static/course_classification/js/course_explorer.js:649
+msgid "Instructor paced"
+msgstr "Ritmo instructor"
+

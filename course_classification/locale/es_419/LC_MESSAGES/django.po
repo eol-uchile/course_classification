@@ -1,0 +1,170 @@
+# Spanish (Latin America) translations for eol-vimeo.
+# Copyright (C) 2026 Oficina EOL
+# This file is distributed under the same license as the eol-vimeo project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: eol-vimeo 1.0.0\n"
+"Report-Msgid-Bugs-To: eol-ing@uchile.cl\n"
+"POT-Creation-Date: 2026-09-25 19:03+0000\n"
+"PO-Revision-Date: 2026-09-25 18:38+0000\n"
+"Last-Translator: Oficina EOL <eol-ing@uchile.cl>\n"
+"Language: es_419\n"
+"Language-Team: es_419 <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: course_classification/models.py:30 course_classification/models.py:68
+msgid "name"
+msgstr "nombre"
+
+#: course_classification/models.py:34
+msgid "Banner file. 500 px height"
+msgstr "Archivo de banner. 500 px de altura"
+
+#: course_classification/models.py:40
+msgid "Logo file. 145 px height"
+msgstr "Archivo de logotipo. 145 px de altura"
+
+#: course_classification/models.py:43 course_classification/models.py:69
+msgid "sequence"
+msgstr "secuencia"
+
+#: course_classification/models.py:44
+msgid "Show: True, Hide: False"
+msgstr "Mostrar: Verdadero, Ocultar: Falso"
+
+#: course_classification/models.py:45
+msgid "Mostrar en"
+msgstr ""
+
+#: course_classification/models.py:70
+msgid "Mostrar"
+msgstr ""
+
+#: course_classification/models.py:92
+msgid "Django template HTML."
+msgstr "Plantilla HTML de Django."
+
+#: course_classification/models.py:104
+msgid "course"
+msgstr "curso"
+
+#: course_classification/models.py:107
+msgid "if the course is featured"
+msgstr "si el curso aparece destacado"
+
+#: course_classification/views.py:108
+msgid "Nothing to search"
+msgstr "No hay resultados"
+
+#: course_classification/views.py:178
+msgid "Your query seems malformed. Check for unmatched quotes."
+msgstr "Tu consulta parece estar mal formada. Revisa si hay comillas sin cerrar."
+
+#: course_classification/views.py:184
+#, python-brace-format
+msgid "An error occurred when searching for \"{search_string} {err}\""
+msgstr "Se produjo un error al buscar \"{search_string} {err}\""
+
+#: course_classification/templates/course_classification/institution.html:28
+msgid "Courses"
+msgstr "Cursos"
+
+#: course_classification/templates/courseware/course_explorer.html:16
+msgid "Course explorer"
+msgstr "Explorador de cursos"
+
+#: course_classification/templates/courseware/course_explorer.html:34
+#: course_classification/templates/courseware/course_explorer.html:40
+msgid "Refine your search"
+msgstr "Refina tu búsqueda"
+
+#: course_classification/templates/courseware/course_explorer.html:49
+msgid "Order"
+msgstr "Orden"
+
+#: course_classification/templates/courseware/course_explorer.html:55
+#: course_classification/templates/courseware/course_explorer.html:56
+#: course_classification/templates/courseware/course_explorer.html:180
+msgid "Newer"
+msgstr "Más recientes"
+
+#: course_classification/templates/courseware/course_explorer.html:59
+#: course_classification/templates/courseware/course_explorer.html:60
+#: course_classification/templates/courseware/course_explorer.html:181
+msgid "Older"
+msgstr "Más antiguos"
+
+#: course_classification/templates/courseware/course_explorer.html:69
+msgid "Year"
+msgstr "Año"
+
+#: course_classification/templates/courseware/course_explorer.html:83
+msgid "State"
+msgstr "Estado"
+
+#: course_classification/templates/courseware/course_explorer.html:90
+#: course_classification/templates/courseware/course_explorer.html:91
+msgid "Active"
+msgstr "Activo"
+
+#: course_classification/templates/courseware/course_explorer.html:94
+#: course_classification/templates/courseware/course_explorer.html:95
+msgid "Finished"
+msgstr "Finalizado"
+
+#: course_classification/templates/courseware/course_explorer.html:98
+#: course_classification/templates/courseware/course_explorer.html:99
+msgid "Coming soon"
+msgstr "Próximamente"
+
+#: course_classification/templates/courseware/course_explorer.html:107
+msgid "Organizations"
+msgstr "Organizaciones"
+
+#: course_classification/templates/courseware/course_explorer.html:120
+msgid "Categories"
+msgstr "Categorías"
+
+#: course_classification/templates/courseware/course_explorer.html:133
+msgid "Price range"
+msgstr "Rango de precios"
+
+#: course_classification/templates/courseware/course_explorer.html:141
+msgid "From"
+msgstr "Desde"
+
+#: course_classification/templates/courseware/course_explorer.html:145
+msgid "To"
+msgstr "Hasta"
+
+#: course_classification/templates/courseware/course_explorer.html:151
+msgid "Show free courses only"
+msgstr "Mostrar solo cursos gratuitos"
+
+#: course_classification/templates/courseware/course_explorer.html:159
+msgid "Clear Filters"
+msgstr "Limpiar Filtros"
+
+#: course_classification/templates/courseware/course_explorer.html:160
+msgid "Apply Filters"
+msgstr "Aplicar Filtros"
+
+#: course_classification/templates/courseware/course_explorer.html:174
+#: course_classification/templates/courseware/course_explorer.html:175
+msgid "Search for a course"
+msgstr "Buscar en nuestros cursos"
+
+#: course_classification/templates/courseware/course_explorer.html:187
+msgid "Advanced"
+msgstr "Avanzado"
+
+#: course_classification/templates/courseware/course_explorer.html:192
+msgid "All courses"
+msgstr "Todos los cursos"
+
