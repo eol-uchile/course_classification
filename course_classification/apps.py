@@ -1,11 +1,14 @@
+# -*- coding: utf-8 -*-
+# Installed packages (via pip)
 from django.apps import AppConfig
+
+# Edx dependencies
 from openedx.core.djangoapps.plugins.constants import (
     PluginSettings,
     PluginURLs,
     ProjectType,
     SettingsType,
 )
-
 
 class CourseClassificationConfig(AppConfig):
     name = 'course_classification'
@@ -26,3 +29,6 @@ class CourseClassificationConfig(AppConfig):
                     PluginSettings.RELATIVE_PATH: "settings.common"}},
         },
     }
+
+def ready(self):
+    pass
