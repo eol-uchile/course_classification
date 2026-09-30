@@ -1,0 +1,25 @@
+<%page expression_filter="h"/>
+<%namespace name='static' file='static_content.html'/>
+<%from django.utils.translation import ugettext as _ %>
+
+<% from course_classification.utils import get_course_ctgs %>
+<% course_class = get_course_ctgs() %>
+% if len(course_class) > 0 :
+  <div class="trending-course-title-container open-carousel-top-courses-title p-5">
+    <h2 class="trending-course-tittle-institution">${_("Top Courses")}</h2>
+    <div class="trending-course-border"></div>
+  </div>
+  <div class="open-carousel-top-courses ml-0">
+    <div class="carousel-wrap m-0 d-flex justify-content-center">
+      <div class="owl-carousel-top-courses owl-carousel owl-theme courses-list m-0 max-course-container">
+        %for course in course_class:
+          <div class="item" >
+            <%include file="course.html" args="course=course" />
+          </div>
+        %endfor
+      </div>
+    </div>
+  </div>
+%else:
+  <p class="without-courses" style="padding-bottom: 10px;"> ${_("There are no courses")}</p>
+%endif

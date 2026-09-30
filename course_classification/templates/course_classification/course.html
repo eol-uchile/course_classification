@@ -1,0 +1,152 @@
+<%def name="online_help_token()"><% return "course" %></%def>
+<%namespace name='static' file='static_content.html'/>
+<%!
+from datetime import datetime
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.translation import ugettext as _
+from six import text_type
+import locale
+from openedx.core.djangoapps.theming import helpers as theming_helpers
+
+now = timezone.now()
+%>
+
+<%
+  card_class = ''
+  if course.get("end", None) is not None and now is not None and datetime.fromisoformat(course.get("end")) < now:
+    card_class = 'inactive'
+%>
+
+<%page args="course" expression_filter="h"/>
+<%
+    course_about = reverse('about_course', args=[text_type(course['id'])])
+%>
+<script>
+    function show_default_image() {
+    return "${static.url(theming_helpers.get_current_site_theme().theme_dir_name+'/images/default-course.png')}";
+  }
+</script>
+<div class="card ${card_class} h-100" data-about="${course_about}" data-state="${course['course_state']}" style="cursor: pointer;" onclick="window.location.href = this.dataset.about">
+
+  <div class="row g-0 p-0">
+    <div class="col-md-12">
+      <div class="card-body">
+        <div class="row g-0 p-0">
+          <figure>
+            <img src="${course['image_url']}" class="card-img-top img-fluid rounded-start" alt="${course['content']['display_name']}" onerror="this.onerror=null; this.src=show_default_image()" >
+          </figure>
+        </div>
+       <strong><h5 class="card-title fw-bold my-2" title="${course['content']['display_name']}">${course['content']['display_name']}</h5></strong> 
+        <%
+          show_start_date = True
+          if course.get("advertised_start",None) is None:
+            course_start_date = datetime.fromisoformat(course["start"]).strftime('%Y-%m-%dT%H:%M:%S%z')
+          else:
+            show_start_date = False
+            course_start_date = course["advertised_start"]
+        %>
+        <div class="row ct3 my-2">
+          <div class="col-md-6 col-sm-12">
+            <div class="row g-0 p-0">
+              <div class="col-2 m-0">
+                <div class="open-course-date-icon">
+                  <img src="${static.url('course_classification/images/fecha termino.svg')}">
+                </div>
+              </div>
+              <div class="col-10">
+                <div class="open-course-date-text ml-3">
+                  <strong><span>${_("Classes Start")}</span></strong>
+                   %if show_start_date:
+                      <div class="course-date localized_datetime" aria-hidden="true" data-format="shortDate" data-datetime="${course_start_date}" data-language="${LANGUAGE_CODE}" data-string=""></div>
+                    % else:
+                      <div class="course-date localized_datetime" aria-hidden="true">${course_start_date}</div>
+                    % endif
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 col-sm-12">
+            <div class="row g-0 p-0">
+              <div class="col-2 m-0">
+                <div class="open-course-date-icon">
+                  <img src="${static.url('course_classification/images/modalidad.svg')}">
+                </div>
+              </div>
+              <div class="col-10">
+                <div class="open-course-date-text ml-3">
+                  <strong><span>${_("Pacing")}</span></strong>
+                  %if bool(course["extra_data"]["self_paced"]) == True:
+                  <div class="course-date" aria-hidden="true">${_("Student paced")}</div>
+                  % else:
+                  <div class="course-date" aria-hidden="true">${_("Instructor paced")}</div>
+                  % endif
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row ct3 my-2">
+          <div class="col-md-6 col-sm-12">
+            <div class="row g-0 p-0">
+              <div class="col-2 m-0">
+                <div class="open-course-date-icon">
+                  <img src="${static.url('course_classification/images/precio.svg')}">
+                </div>
+              </div>
+              <div class="col-10">
+                <div class="open-course-date-text ml-3">
+                  <strong><span>${_("Price")}</span></strong>
+                  <div class="course-date" aria-hidden="true">
+                      <% course_price = course["extra_data"]["price"] %>
+                      %if course_price not in ['Gratis', 'Free', None, "None"]:
+                        <% aux_price = int(course_price[1:]) %>
+                        $ ${f'{aux_price:,}'.replace(',', '.')}
+                      %else:
+                          ${course_price}
+                      %endif
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 col-sm-12">
+            %if course["extra_data"]["effort"] != None:
+              <div class="row g-0 p-0">
+                <div class="col-2 m-0">
+                  <div class="open-course-date-icon">
+                    <img src="${static.url('course_classification/images/fecha inicio.svg')}">
+                  </div>
+                </div>
+                <div class="col-10">
+                  <div class="open-course-date-text ml-3">
+                    <strong><span>${_("Duration")}</span></strong>
+                      <div class="course-date" aria-hidden="true">${course["extra_data"]["effort"]}</div>
+                  </div>
+                </div>
+              </div>
+            % endif
+          </div>
+        </div>
+        <div class="card-button mt-2 p-0 mb-0">
+          <a href="${course_about}">
+            %if course["course_state"] == 'ongoing_enrollable' or course["course_state"] == 'upcoming_enrollable':
+              <button type="button" class="dark-blue-button w-100 mb-0 ongoing_enrollable_color">${_("Enroll now")}</button>
+            % elif course["course_state"] == 'upcoming_notenrollable':
+              <button type="button" class="dark-blue-button w-100 mb-0 upcoming_notenrollable_color">${_("Coming soon")}</button>
+            % elif course["course_state"] == 'ongoing_notenrollable':
+              <button type="button" class="dark-blue-button w-100 mb-0 ongoing_notenrollable_color">${_("See more")}</button>
+            % elif course["course_state"] == 'completed':
+              <button type="button" class="dark-blue-button w-100 mb-0 completed_color">${_("Finished")}</button>
+            % else:
+              <button type="button" class="dark-blue-button w-100 mb-0">${_("See more")}</button>
+            % endif
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<%static:require_module_async module_name="js/dateutil_factory" class_name="DateUtilFactory">
+    DateUtilFactory.transform(iterationKey=".localized_datetime");
+</%static:require_module_async>
