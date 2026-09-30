@@ -1,0 +1,44 @@
+<%page expression_filter="h"/>
+<%namespace name='static' file='static_content.html'/>
+<% from django.utils.translation import ugettext as _ %>
+
+<% from course_classification.utils import get_courses_filtered_by_course_state %>
+
+<%
+  use_course_states = configuration_helpers.get_value('CC_NEW_COURSES_STATES', ["upcoming_notenrollable","ongoing_enrollable"])
+%>
+<% course_filtered = get_courses_filtered_by_course_state(use_course_states) %>
+% if len(course_filtered) > 0 :
+  <div class="new-courses-title-container p-5">
+    <h2 class="new-courses-title-container">${_("New Courses")}</h2>
+    <div class="new-courses-border"></div>
+  </div>
+  <section class="courses-container max-course-container">
+    <section class="highlighted-courses">
+        <div class="courses-list">
+          <% displayed_courses = 0 %>
+          %for course in course_filtered[0:4]:
+            %if displayed_courses %4 == 0:
+              <div class="row px-5 m-0">
+            %endif
+              <div class=" col-xl-3 col-lg-6 col-md-12 col-sm-12 col-12 p-2">
+                <%include file="course.html" args="course=course" />
+              </div>
+            <% displayed_courses = displayed_courses + 1 %>
+            %if displayed_courses %4 == 0:
+              </div>
+            %endif
+          %endfor
+          % if displayed_courses < 4:
+            </div>
+          %endif
+        </div>
+    </section>
+    <div class="link-new-courses px-5 mt-3">
+      <a  href="${marketing_link('COURSES')}?state=active">${_("See more courses")}</a>
+    </div>
+  </section>
+%else:
+  <p class="without-courses" style="padding-bottom: 10px;"> ${_("There are no courses")}</p>
+%endif
+
